@@ -21,8 +21,8 @@
 
 use \GatewayWorker\Lib\Gateway;
 //use \GatewayWorker\channel\getIpInfo\IpGet;
-require_once '..../vendor/mysql-master/src/Connection.php';
-require_once '/channel/getIpInfo/IpGet.php';
+require_once './vendor/mysql-master/src/Connection.php';
+require_once './Applications/YourApp/channel/getIpInfo/IpGet.php';
 /**
  * 主逻辑
  * 主要是处理 onConnect onMessage onClose 三个方法
@@ -34,7 +34,7 @@ class Events
     public static function onWorkerStart($worker)
     {
         //self::$db = new \Workerman\MySQL\Connection('172.31.37.203', '3306', 'admin', 'ydzsadmin', 'obj');
-        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'root', '', 'obj');
+        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
     }
     /**
      * 当客户端连接时触发
@@ -48,10 +48,10 @@ class Events
         //Gateway::bindUid($client_id,$ip);
 
         //得到地址信息
-        $IpGet=new IpGet($ip);
+        $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();
-        unset($IpGet);
-        $ip_info['country']=$ip_info->getCountry();
+        //unset($IpGet);
+        $ip_info['country']=$IpGet::getCountry();
         $time=date('Y-m-d H:i:S',time());
 
         //记录全局信息
@@ -240,7 +240,7 @@ class Events
    {
     if(count($tosend)>10){
       //发送给指定用户的消息
-      $client_id=Gateway::::getClientIdByUid($tosend);
+      $client_id=Gateway::getClientIdByUid($tosend);
       $lan=static::getlanfromcountry($_SESSION[$client_id]['ip_info']['country']);
       if($lan==false) return false;
       Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]));

@@ -1,6 +1,7 @@
 <?php
 namespace GatewayWorker\channel\getIpInfo;
-use IpLocation;
+require_once './Applications/YourApp/channel/getIpInfo/IpLocation.php';
+use GatewayWorker\channel\getIpInfo\IpLocation;
 class IpGet {
 	private static $ipinfo;
 	private static $is_local=false;

@@ -31,6 +31,14 @@ require_once './Applications/YourApp/channel/getIpInfo/IpGet.php';
 class Events
 {
     public static $db = null;
+    public static $lan_arr=[
+        '菲律宾'=>'ENG',
+        '印度尼西亚'=>'IND',
+        '沙特阿拉伯'=>'ARB',
+        '阿联酋'=>'ARB',
+        '卡塔尔'=>'ARB',
+        '台湾省'=>'CHI'
+      ];
     public static function onWorkerStart($worker)
     {
         //self::$db = new \Workerman\MySQL\Connection('172.31.37.203', '3306', 'admin', 'ydzsadmin', 'obj');
@@ -46,12 +54,12 @@ class Events
     {
         $ip=$_SERVER['REMOTE_ADDR'];
         //Gateway::bindUid($client_id,$ip);
-
+        $ip='39.10.194.98';
         //得到地址信息
         $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();
         //unset($IpGet);
-        $ip_info['country']=$IpGet::getCountry();
+        $ip_info['country']=$IpGet->getCountry();
         $time=date('Y-m-d H:i:S',time());
 
         //记录全局信息
@@ -63,7 +71,7 @@ class Events
         
         if($ip_info!=false && $ip_info!=null && $ip_info!=[]){
           // 通知服务端
-          static::msgToAdmin(1,$ip_info['country'],['type'=>'connet_notice','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
+          static::msgToAdmin(1,static::getlanfromcountry($ip_info['country']),['type'=>'connet_notice','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
         }
        
     }
@@ -76,43 +84,61 @@ class Events
    public static function onMessage($client_id, $message)
    {
         // 向所有人发送 
-        $msg=json_decode($message);
-        if(!isset($msg['user'])) GateWay::closeClient($client_id);
+        $msg=json_decode($message,true);//var_dump($msg);
+        if(!isset($msg['user'])||!isset($msg['type'])) GateWay::closeClient($client_id);
         switch ($msg['user']) {
           case 'client':
-            if($msg['type']=='first_client'){
+           $ip_info=$_SESSION[$client_id]['ip_info'];
+            if(isset($msg['type'])&&$msg['type']=='firstClient'){
               //初次链接，分配pid
               $pid=time().static::getlanid($client_id).rand(10000,99999);
               Gateway::bindUid($client_id,$pid);
+              //$ip_info=$_SESSION[$client_id]['ip_info'];
+              Gateway::joinGroup($client_id, 'client_'.$ip_info['country']);var_dump('client join:'.'client_'.$ip_info['country']);
+              Gateway::joinGroup($client_id, 'client');
               static::msgToClient($client_id,['type'=>'first_client','pid'=>$pid]);
               return;
-            }
-            $ip_info=$_SESSION[$client_id]['ip_info'];
-            if(isset($ip_info['country'])&&$ip_info['country']!=null&&$ip_info['country']!='XX'){
-              if(!isset($msg['pid'])){
-                static::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
-              }   
-              Gateway::bindUid($client_id,$msg['pid']);
-              Gateway::joinGroup($client_id, 'client_'.$ip_info['country']);
-              Gateway::joinGroup($client_id, 'client');
-              $msg['type']='clientSend';
-              static::msgToAdmin(1,$ip_info['country'],$msg);
-              return;
+            }elseif(isset($msg['type'])&&$msg['type']=='reClient'){
+                 if(isset($ip_info['country'])&&$ip_info['country']!=null&&$ip_info['country']!='XX'){
+                    if(!isset($msg['pid'])){
+                      //var_dump($msg);
+                      static::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
+                      return;
+                    }   
+                    Gateway::bindUid($client_id,$msg['pid']);
+                    Gateway::joinGroup($client_id, 'client_'.$ip_info['country']);
+                    Gateway::joinGroup($client_id, 'client');
+                    //$msg['type']='clientSend';
+                    //static::msgToAdmin(1,$ip_info['country'],$msg);
+                    return;
+                  }else{
+                     static::msgToClient($client_id,['type'=>'clientSend','err'=>'ip can not be read'],-6);
+                     return;
+                  }
+            }elseif(isset($msg['type'])&&$msg['type']=='clientSend'){
+                if(isset($ip_info['country'])&&$ip_info['country']!=null&&$ip_info['country']!='XX'){
+/*                  $msg['type']='clientSend';
+*/                  static::msgToAdmin(1,static::getlanfromcountry($ip_info['country']),$msg);
+                }else{
+                   static::msgToClient($client_id,['type'=>'clientSend','err'=>'ip can not be read'],-6);
+                   return;
+                }
             }
             break;
           case 'admin':
+          //var_dump($msg);
           //身份验证
             if($msg['type']=='auth'){
-              $admin=self::$db->select('*')->from('admin')->where('admin_name='.$msg['admin_name'])->offset(0)->limit(1)->query();
-              if($admin==false||password_hash($admin['admin_password'])!=$admin['admin_password']){
+              $admin=self::$db->select('*')->from('admin')->where('admin_name="'.$msg['admin_name'].'"')->offset(0)->limit(1)->query()[0];
+              if($admin==false||password_verify($msg['admin_password'], $admin['password'])==false){
                 static::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'auth'],-1);
                 return;
               }else{
                 $_SESSION[$client_id]['auth']=$admin;
-                Gateway::joinGroup($client_id,$msg['language']);
+                Gateway::joinGroup($client_id,$msg['language']);var_dump($msg['language']);
                 Gateway::joinGroup($client_id,'admin');
                 Gateway::bindUid($client_id,$admin['admin_id']);
-                static::msgToAdminByPid($admin['admin_id'],['pid'=>$admin['admin_id'],'type'=>'auth',1]);
+                static::msgToAdminByPid($admin['admin_id'],['pid'=>$admin['admin_id'],'type'=>'auth'],1);
                 return;
               }
             }
@@ -129,21 +155,23 @@ class Events
             }elseif($msg['touser']=='all'){
               //推送给所有客户端
               if(isset($msg['country'])){
+                 if(!isset($msg['msg'])) static::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'msg send fail,msg not found'],-5);
                 $msg_arr=[];
                 $msg_arr['type']='adminSend';
                 $msg_arr['msg']=$msg['msg'];
                 static::msgToClient($msg['country'],$msg_arr);
                  //转发给对应语种服务端
-                 $code=static::resendToAdmin($msg['country'],$msg['msg']);
+                 $code=static::resendToAdmin($msg['country'],$msg['msg']);var_dump($client_id);
                  if($code==false){
-                  Gateway::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
+                  static::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
                  }
               }else{
+                if(!isset($msg['msg'])) static::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'msg send fail,msg not found'],-5);
                 static::msgToClient('all',$msg['msg']);
                 //转发给所有服务端
                  $code=static::resendToAdmin('all',$msg['msg']);
                  if($code==false){
-                  Gateway::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
+                  static::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
                  }
               }
               return;
@@ -170,7 +198,7 @@ class Events
       }
 
        // 通知服务端
-       GateWay::msgToAdmin(1,'admin',['msg'=>"$client_id($pid) logout",'type'=>'clientClose','client_id'=>$client_id,'pid'=>$pid]);
+       static::msgToAdmin(1,'admin',['msg'=>"$client_id($pid) logout",'type'=>'clientClose','client_id'=>$client_id,'pid'=>$pid]);
    }
    /**
     * 向客户端发送数据
@@ -182,9 +210,9 @@ class Events
    public static function msgToClient($client_id,$msg,$status=0)
    {
       if($client_id=='all'){
-        GateWay::sendToAll(json_decode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
-      }elseif(count($client_id)<10){
-        Gateway::sendToGroup('client_'.$client_id,json_decode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
+        GateWay::sendToAll(json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
+      }elseif(mb_strlen($client_id)<10){
+        Gateway::sendToGroup('client_'.$client_id,json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]),$_SERVER['GATEWAY_CLIENT_ID']);
       }else{
         // 向当前client_id发送数据 
         Gateway::sendToClient($client_id, json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
@@ -202,7 +230,7 @@ class Events
    public static function msgToAdmin($type=1,$group,$msg,$status=0)
    {
     if($type==1){
-     Gateway::sendToGroup($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$msg]));
+     Gateway::sendToGroup($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$msg]),$_SERVER['GATEWAY_CLIENT_ID']);
     }else{
      Gateway::sendToClient($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$msg]));
     }
@@ -238,31 +266,39 @@ class Events
     */
    public static function resendToAdmin($tosend,$msg,$status=0)
    {
-    if(count($tosend)>10){
+    if(mb_strlen($tosend)>10){
       //发送给指定用户的消息
       $client_id=Gateway::getClientIdByUid($tosend);
       $lan=static::getlanfromcountry($_SESSION[$client_id]['ip_info']['country']);
       if($lan==false) return false;
-      Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]));
+      Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
+      return true;
     }elseif($tosend!='all'){
-     $lan=static::getlanfromcountry($tosend);
+     $lan=static::getlanfromcountry($tosend);var_dump($lan);
      if($lan==false) return false;
-     Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]));
+     Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
+     return true;
     }elseif($tosend=='all'){
-      Gateway::sendToGroup('admin',json_encode(['type'=>'resendToAdmin','msg'=>$msg,'touser'=>$tosend,'status'=>$status]));
+      Gateway::sendToGroup('admin',json_encode(['type'=>'resendToAdmin','msg'=>$msg,'touser'=>$tosend,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
+      return true;
     }
    } 
    public static function getlanfromcountry($country)
    {
-    $arr=[
-        '菲律宾'=>'ENG',
-        '印度尼西亚'=>'IND',
-        '沙特阿拉伯'=>'ARB',
-        '阿联酋'=>'ARB',
-        '卡塔尔'=>'ARB',
-        '台湾省'=>'CHI'
-      ];
-      if(!in_array($country, $arr)) return false;
+    $arr=static::$lan_arr;
+      if(!array_key_exists($country, $arr)) return false;
+      return $arr[$country];
+   }
+   /**
+    * 湖片区语言id
+    * @param  [type] $country [description]
+    * @return [type]          [description]
+    */
+   public static function getlanid($client_id)
+   {
+    $country=$_SESSION[$client_id]['ip_info']['country'];
+    $arr=static::$lan_arr;
+      if(!array_key_exists($country, $arr)) return 'XXX';
       return $arr[$country];
    }
 }

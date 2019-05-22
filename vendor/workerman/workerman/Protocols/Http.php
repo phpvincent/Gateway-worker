@@ -301,6 +301,7 @@ class Http
             }
         }
 
+
         if ($key === 'Set-Cookie') {
             HttpCache::$header[$key][] = $content;
         } else {

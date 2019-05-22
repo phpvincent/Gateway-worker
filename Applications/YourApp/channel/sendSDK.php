@@ -8,8 +8,11 @@ class sendSDK {
         '沙特阿拉伯'=>'ARB',
         '阿联酋'=>'ARB',
         '卡塔尔'=>'ARB',
-        '台湾省'=>'CHI'
+        '台湾省'=>'CHI',
+        '美国'=>'ENG'
       ];
+  public static $lan=[];
+  public static $country=[];
 	 /**
     * 向客户端发送数据
     * @param  [num] $client_id [id]

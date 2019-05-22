@@ -36,6 +36,11 @@ class Events
     {
         //self::$db = new \Workerman\MySQL\Connection('172.31.37.203', '3306', 'admin', 'ydzsadmin', 'obj');
         self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
+        /*global $http_worker;
+        $http_worker=new \Workerman\Worker('http://0.0.0.1:8200');
+        var_dump($http_worker);
+        $http_worker->onMessage='http_listen';
+        $http_worker->listen();*/
     }
     /**
      * 当客户端连接时触发
@@ -46,19 +51,25 @@ class Events
     public static function onConnect($client_id)
     {
         $ip=$_SERVER['REMOTE_ADDR'];
-        //Gateway::bindUid($client_id,$ip);
-        $ip='39.10.194.98';
+        if(strstr($ip, '192.168.1')!==false) return;
+        //$ip='39.10.194.98';
         //得到地址信息
         $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();
         //unset($IpGet);
         $ip_info['country']=$IpGet->getCountry();
+        if(!array_key_exists($ip['country'], GatewayWorker\channel\sendSDK::$lan_arr)){
+          GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet fail,country not allowed','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
+          Gateway::closeClient($client_id);
+          return;
+        }else{
+          $ip_info['lan']=GatewayWorker\channel\sendSDK::$lan_arr[$ip_info['country']];
+        }
         $time=date('Y-m-d H:i:S',time());
 
         //记录全局信息
         $_SESSION[$client_id]['ip_info']=$ip_info;
         $_SESSION[$client_id]['first_time']=$time;
-
         // 向当前client_id发送数据 
         GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet_success','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
         
@@ -81,14 +92,19 @@ class Events
         if(!isset($msg['user'])||!isset($msg['type'])) GateWay::closeClient($client_id);
         switch ($msg['user']) {
           case 'client':
+           if($msg['type']!='firstClient'&&(!isset($msg['pid'])||$msg['pid']==null)){
+            GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
+            GateWay::closeClient($client_id);
+           }
            $ip_info=$_SESSION[$client_id]['ip_info'];
             if(isset($msg['type'])&&$msg['type']=='firstClient'){
               //初次链接，分配pid
-              $pid=time().GatewayWorker\channel\sendSDK::getlanid($client_id).rand(10000,99999);
+              $pid='c'.time().GatewayWorker\channel\sendSDK::getlanid($client_id).rand(10000,99999);
               Gateway::bindUid($client_id,$pid);
               //$ip_info=$_SESSION[$client_id]['ip_info'];
               Gateway::joinGroup($client_id, 'client_'.$ip_info['country']);var_dump('client join:'.'client_'.$ip_info['country']);
               Gateway::joinGroup($client_id, 'client');
+
               GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'first_client','pid'=>$pid]);
               return;
             }elseif(isset($msg['type'])&&$msg['type']=='reClient'){
@@ -139,6 +155,7 @@ class Events
             if(!isset($_SESSION[$client_id])||!isset($_SESSION[$client_id]['auth'])){
               //验证身份
               GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'adminSend'],-2);
+              GateWay::closeClient($client_id);
               return;
             }
             //推送数据
@@ -193,5 +210,8 @@ class Events
        // 通知服务端
        GatewayWorker\channel\sendSDK::msgToAdmin(1,'admin',['msg'=>"$client_id($pid) logout",'type'=>'clientClose','client_id'=>$client_id,'pid'=>$pid]);
    }
-  
+  public static function http_listen($con)
+  {
+    var_dump('on message');
+  }
 }

@@ -239,6 +239,7 @@ class Gateway extends Worker
         parent::__construct($socket_name, $context_option);
 		$this->_gatewayPort = substr(strrchr($socket_name,':'),1);
         $this->router = array("\\GatewayWorker\\Gateway", 'routerBind');
+         \Workerman\Protocols\Http::header('Access-Control-Allow-Origin: *');
 
         $backtrace               = debug_backtrace();
         $this->_autoloadRootPath = dirname($backtrace[0]['file']);

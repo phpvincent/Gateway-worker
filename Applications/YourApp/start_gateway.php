@@ -19,13 +19,13 @@ use \Workerman\Autoloader;
 
 // 自动加载类
 require_once __DIR__ . '/../../vendor/autoload.php';
-
+global $gateway;
 // gateway 进程，这里使用Text协议，可以用telnet测试
 $gateway = new Gateway("websocket://0.0.0.0:8282");
 // gateway名称，status方便查看
 $gateway->name = 'YourAppGateway';
 // gateway进程数
-$gateway->count = 4;
+$gateway->count = 1;
 // 本机ip，分布式部署时使用内网ip
 $gateway->lanIp = '127.0.0.1';
 // 内部通讯起始端口，假如$gateway->count=4，起始端口为4000
@@ -33,7 +33,6 @@ $gateway->lanIp = '127.0.0.1';
 $gateway->startPort = 2900;
 // 服务注册地址
 $gateway->registerAddress = '127.0.0.1:1238';
-
 // 心跳间隔
 //$gateway->pingInterval = 10;
 // 心跳数据

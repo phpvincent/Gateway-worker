@@ -102,9 +102,18 @@ class Events
               $pid='c'.time().GatewayWorker\channel\sendSDK::getlanid($client_id).rand(10000,99999);
               Gateway::bindUid($client_id,$pid);
               //$ip_info=$_SESSION[$client_id]['ip_info'];
-              Gateway::joinGroup($client_id, 'client_'.$ip_info['country']);var_dump('client join:'.'client_'.$ip_info['country']);
+              Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);var_dump('client join:'.'client_'.$ip_info['lan']);
               Gateway::joinGroup($client_id, 'client');
-
+              $user_id=self::$db->insert('talk_user')->cols([
+                'talk_user_lan'=>$ip_info['lan'],
+                'talk_user_status'=>1,
+                'talk_user_goods'=>$msg['goods_id'],
+                'talk_user_time'=>date('Y-m-d H:i:S',time()),
+                'talk_user_is_shop'=>0,
+                'talk_user_last_time'=>date('Y-m-d H:i:s',time()),
+                'talk_user_pid'=>$pid,
+                'talk_user_country'=>$ip_info['country']
+              ])->query();
               GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'first_client','pid'=>$pid]);
               return;
             }elseif(isset($msg['type'])&&$msg['type']=='reClient'){
@@ -115,8 +124,9 @@ class Events
                       return;
                     }   
                     Gateway::bindUid($client_id,$msg['pid']);
-                    Gateway::joinGroup($client_id, 'client_'.$ip_info['country']);
+                    Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
                     Gateway::joinGroup($client_id, 'client');
+                    $row_count=self::$db->update('talk_user')->cols(['talk_user_last_time'=>date('Y-m-d H:i:s',time()),'talk_user_status'=>0,'talk_user_country'=>$ip_info['country'],'talk_user_lan',$ip_info['lan']])->where('talk_user_pid',$msg['pid'])->query();
                     //$msg['type']='clientSend';
                     //GatewayWorker\channel\sendSDK::msgToAdmin(1,$ip_info['country'],$msg);
                     return;
@@ -127,7 +137,7 @@ class Events
             }elseif(isset($msg['type'])&&$msg['type']=='clientSend'){
                 if(isset($ip_info['country'])&&$ip_info['country']!=null&&$ip_info['country']!='XX'){
 /*                  $msg['type']='clientSend';
-*/                  GatewayWorker\channel\sendSDK::msgToAdmin(1,GatewayWorker\channel\sendSDK::getlanfromcountry($ip_info['country']),$msg);
+*/                  GatewayWorker\channel\sendSDK::msgToAdmin(1,GatewayWorker\channel\sendSDK::getlanfromcountry($ip_info['lan']),$msg);
                 }else{
                    GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'ip can not be read'],-6);
                    return;

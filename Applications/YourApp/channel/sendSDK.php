@@ -2,7 +2,7 @@
 namespace GatewayWorker\channel;
 use \GatewayWorker\Lib\Gateway;
 class sendSDK {
-	private static $lan_arr=[
+	public static $lan_arr=[
         '菲律宾'=>'ENG',
         '印度尼西亚'=>'IND',
         '沙特阿拉伯'=>'ARB',

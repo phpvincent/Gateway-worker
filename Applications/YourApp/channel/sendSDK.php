@@ -2,7 +2,7 @@
 namespace GatewayWorker\channel;
 use \GatewayWorker\Lib\Gateway;
 class sendSDK {
-	private static $lan_arr=[
+	public static $lan_arr=[
         '菲律宾'=>'ENG',
         '印度尼西亚'=>'IND',
         '沙特阿拉伯'=>'ARB',
@@ -11,8 +11,8 @@ class sendSDK {
         '台湾省'=>'CHI',
         '美国'=>'ENG'
       ];
-  public static $lan=[];
-  public static $country=[];
+    public static $lan=[];
+    public static $country=[];
 	 /**
     * 向客户端发送数据
     * @param  [num] $client_id [id]
@@ -24,7 +24,7 @@ class sendSDK {
    {
       if($client_id=='all'){
         GateWay::sendToAll(json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
-      }elseif(mb_strlen($client_id)<10){
+      }elseif(strlen($client_id)<10){
         Gateway::sendToGroup('client_'.$client_id,json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]),$_SERVER['GATEWAY_CLIENT_ID']);
       }else{
         // 向当前client_id发送数据 
@@ -42,10 +42,17 @@ class sendSDK {
     */
    public static function msgToAdmin($type=1,$group,$msg,$status=0)
    {
+    $data = static::msg_template($msg);
     if($type==1){
-     Gateway::sendToGroup($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$msg]),$_SERVER['GATEWAY_CLIENT_ID']);
+        //判断客服人员是否在线
+        $uids = Gateway::getUidListByGroup($group);
+        $group_count = count($uids);
+        $ip=$_SERVER['REMOTE_ADDR'];
+        $pid = $_SESSION['pid'];
+
+     Gateway::sendToGroup($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$data]),$_SERVER['GATEWAY_CLIENT_ID']);
     }else{
-     Gateway::sendToClient($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$msg]));
+     Gateway::sendToClient($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$data]));
     }
    }
     /**
@@ -79,7 +86,7 @@ class sendSDK {
     */
    public static function resendToAdmin($tosend,$msg,$status=0)
    {
-    if(mb_strlen($tosend)>10){
+    if(strlen($tosend)>10){
       //发送给指定用户的消息
       $client_id=Gateway::getClientIdByUid($tosend);
       $lan=static::getlanfromcountry($_SESSION[$client_id]['ip_info']['country']);
@@ -113,5 +120,31 @@ class sendSDK {
     $arr=static::$lan_arr;
       if(!array_key_exists($country, $arr)) return 'XXX';
       return $arr[$country];
+   }
+
+    /**
+     * 消息模板
+     * @param $msg
+     * @return array
+     */
+   private static function msg_template($msg)
+   {
+       //好友消息
+       $data = [
+           'username' => isset($msg['msg']['mine']['username']) ? $msg['msg']['mine']['username'] : '',
+           'avatar' => isset($msg['msg']['mine']['avatar']) ? $msg['msg']['mine']['avatar'] : '/admin/images/13.jpg',
+           'id' => isset($msg['msg']['mine']['id']) ? $msg['msg']['mine']['id'] : 0,
+           'type' => $msg['msg']['to']['type'],
+           'content' => isset($msg['msg']['mine']['content']) ? $msg['msg']['mine']['content'] : '',
+           'cid' => 0,
+           'mine'=> $msg['pid'] == $msg['msg']['mine']['id'] ? true : false,//要通过判断是否是我自己发的
+           'fromid' => $msg['msg']['mine']['id'],
+           'timestamp' => time()*1000
+       ];
+       //判断是否为新用户
+       if(isset($msg['sendUser'])){
+            array_push($data,$msg['sendUser']);
+       }
+       return $data;
    }
 }

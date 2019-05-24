@@ -161,8 +161,8 @@ $internal_gateway->onMessage=function($con,$message){
 			            unset($group_id,$data,$group_list);
 	              break;
 	            case 'getUserInfo':
-	                if(!isset($_POST['id'])) return $con->send(json_encode(['status'=>0,'msg'=>'id not find']));
-	                $user=$db_http->select('*')->from('talk_user')->where('talk_user_pid="'.$_POST['id'].'"')->offset(0)->limit(1)->query();
+	                if(!isset($_POST['pid'])) return $con->send(json_encode(['status'=>0,'msg'=>'pid not find']));
+	                $user=$db_http->select('*')->from('talk_user')->where('talk_user_pid="'.$_POST['pid'].'"')->offset(0)->limit(1)->query();
 	                if(count($user)<=0) return $con->send(json_encode(['status'=>0,'msg'=>'user msg not found']));
 	                $con->send(json_encode(['statuc'=>1,'msg'=>$user[0]]));
 	            	break;

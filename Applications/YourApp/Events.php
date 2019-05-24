@@ -51,14 +51,14 @@ class Events
     public static function onConnect($client_id)
     {
         $ip=$_SERVER['REMOTE_ADDR'];
-        if(strstr($ip, '192.168.1')!==false) return;
-        //$ip='39.10.194.98';
+        //if(strstr($ip, '192.168.1')!==false) return;
+        $ip='39.10.194.98';
         //得到地址信息
         $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();
         //unset($IpGet);
         $ip_info['country']=$IpGet->getCountry();
-        if(!array_key_exists($ip['country'], GatewayWorker\channel\sendSDK::$lan_arr)){
+        if(!array_key_exists($ip_info['country'], GatewayWorker\channel\sendSDK::$lan_arr)){
           GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet fail,country not allowed','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
           Gateway::closeClient($client_id);
           return;
@@ -88,7 +88,7 @@ class Events
    public static function onMessage($client_id, $message)
    {
         // 向所有人发送 
-        $msg=json_decode($message,true);//var_dump($msg);
+        $msg=json_decode($message,true);
         if(!isset($msg['user'])||!isset($msg['type'])) GateWay::closeClient($client_id);
         switch ($msg['user']) {
           case 'client':
@@ -107,7 +107,7 @@ class Events
               $user_id=self::$db->insert('talk_user')->cols([
                 'talk_user_lan'=>$ip_info['lan'],
                 'talk_user_status'=>1,
-                'talk_user_goods'=>$msg['goods_id'],
+                'talk_user_goods'=>isset($msg['goods_id']) ? $msg['goods_id'] : null,
                 'talk_user_time'=>date('Y-m-d H:i:s',time()),
                 'talk_user_is_shop'=>0,
                 'talk_user_last_time'=>date('Y-m-d H:i:s',time()),

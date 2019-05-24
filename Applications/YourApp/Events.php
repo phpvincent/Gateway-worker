@@ -58,6 +58,7 @@ class Events
         $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();
         //unset($IpGet);
+        $time=date('Y-m-d H:i:s',time());
         $ip_info['country']=$IpGet->getCountry();
         if(!array_key_exists($ip_info['country'], GatewayWorker\channel\sendSDK::$lan_arr)){
           GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet fail,country not allowed','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
@@ -66,7 +67,6 @@ class Events
         }else{
           $ip_info['lan']=GatewayWorker\channel\sendSDK::$lan_arr[$ip_info['country']];
         }
-        $time=date('Y-m-d H:i:s',time());
         //记录全局信息
         $_SESSION[$client_id]['ip_info']=$ip_info;
         $_SESSION[$client_id]['first_time']=$time;

@@ -19,7 +19,7 @@ $internal_gateway->registerAddress = '127.0.0.1:1238';
 $internal_gateway->onWorkerStart=function($worker)
 {	
 	global $db_http;
-	$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
+	$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'adminuser', 'Ydzs2018', 'obj');
 };
 $internal_gateway->onMessage=function($con,$message){
 	global $db_http;

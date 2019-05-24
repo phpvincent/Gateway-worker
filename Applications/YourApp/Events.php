@@ -35,7 +35,7 @@ class Events
     public static function onWorkerStart($worker)
     {
         //self::$db = new \Workerman\MySQL\Connection('172.31.37.203', '3306', 'admin', 'ydzsadmin', 'obj');
-        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
+        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'adminuser', 'Ydzs2018', 'obj');
         /*global $http_worker;
         $http_worker=new \Workerman\Worker('http://0.0.0.1:8200');
         var_dump($http_worker);

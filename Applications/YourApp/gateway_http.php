@@ -73,12 +73,12 @@ $internal_gateway->onMessage=function($con,$message){
 			               	$group_m['groupname']=$need_lan;
 			               	$group_m['id']=$need_lan;
 			               	$users=$db_http->select('*')->from('talk_user')->where('talk_user_lan="'.$need_lan.'"')->query();
-			               	if(count($user)>0){
-			               		foreach($user as $val){
+			               	if(count($users)>0){
+			               		foreach($users as $val){
 			               			$user_m=[];
 			               			$user_m['username']=$val['talk_user_name']==null ? $val['talk_user_pid'] : $val['talk_user_name'];
 				               		$user_m['id']=$val['talk_user_pid'];
-				               		$user_m['avatar']=Gateway::isUidOnline($v['talk_user_pid'])==1 ? '/images/online.gif' : '/images/close.png';
+				               		$user_m['avatar']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? '/images/online.gif' : '/images/close.png';
 				               		$user_m['sign']='语种:'.$val['talk_user_lan'].'，商品id:'.$val['talk_user_goods'];
 				               		$user_m['status']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? 'online' : null;
 				               		$group_m['list'][]=$user_m;
@@ -166,17 +166,28 @@ $internal_gateway->onMessage=function($con,$message){
 	                if(count($user)<=0) return $con->send(json_encode(['status'=>0,'msg'=>'user msg not found']));
 	                $con->send(json_encode(['statuc'=>1,'msg'=>$user[0]]));
 	            	break;
+	            case 'up_userinfo':
+	            	if($message['server']['REQUEST_METHOD']!='post') return $con->send(json_encode(['status'=>0,'msg'=>'method not allowed']));
+	            	if(!isset($_POST['talk_user_pid'])||$_POST['talk_user_pid']==false) return $con->send(json_encode(['status'=>0,'msg'=>'talk_user_pid not allowed']));
+	            	$updata_a=[];
+	            	if(isset($_POST['talk_user_phone'])&&$_POST['talk_user_phone']!=null) $updata_a['talk_user_phone']=$_POST['talk_user_phone'];
+	            	if(isset($_POST['talk_user_email'])&&$_POST['talk_user_email']!=null) $updata_a['talk_user_email']=$_POST['talk_user_email'];
+	            	if(isset($_POST['talk_user_name'])&&$_POST['talk_user_name']!=null) $updata_a['talk_user_name']=$_POST['talk_user_name'];
+	            	if($updata_a==[]) return $con->send(json_encode(['status'=>0,'msg'=>'data unallow']))
+	            	$db_http->update('talk_user')->cols($updata_a)->where('talk_user_pid='.$_POST['talk_user_pid'])->query();
+	            	return $con->send(json_encode(['status'=>1,'msg'=>$_POST['talk_user_pid'].'update success']));
+	            	break;
 	            case 'file_upload':
-	            	if(count($_File)>1||count($_File)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'file count not allowed']));
-	            	if($_File[0]['file_size']>10485760) return $con->send(json_encode(['code'=>2,'msg'=>'file size not allowed']));
-	            	file_put_contents('/tmp/up_files'.$_File[0]['file_name'], $_File[0]['file_data']);
-	            	$con->send(['code'=>0,'msg'=>'file upload success','data'=>['src'=>'http://13.229.73.221/tmp/up_files'.$_File[0]['file_name'],'name'=>$_File[0]['file_name']]]);
+	            	if(count($_FILES)>1||count($_FILES)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'file count not allowed']));
+	            	if($_FILES[0]['file_size']>10485760) return $con->send(json_encode(['code'=>2,'msg'=>'file size not allowed']));
+	            	file_put_contents('/tmp/up_FILESs'.$_FILES[0]['file_name'], $_FILES[0]['file_data']);
+	            	$con->send(['code'=>0,'msg'=>'file upload success','data'=>['src'=>'http://13.229.73.221/tmp/up_FILESs'.$_FILES[0]['file_name'],'name'=>$_FILES[0]['file_name']]]);
 	            	return;
 	            case 'img_upload':
-	            	if(count($_File)>1||count($_File)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'img count not allowed']));
-	            	if($_File[0]['file_size']>10485760) return $con->send(json_encode(['code'=>2,'msg'=>'img size not allowed']));
-	            	file_put_contents('/tmp/up_images'.$_File[0]['file_name'], $_File[0]['file_data']);
-	            	$con->send(['code'=>0,'msg'=>'img upload success','data'=>['src'=>'http://13.229.73.221/tmp/up_images'.$_File[0]['file_name'],'name'=>$_File[0]['file_name']]]);
+	            	if(count($_FILES)>1||count($_FILES)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'img count not allowed']));
+	            	if($_FILES[0]['file_size']>10485760) return $con->send(json_encode(['code'=>2,'msg'=>'img size not allowed']));
+	            	file_put_contents('/tmp/up_images'.$_FILES[0]['file_name'], $_FILES[0]['file_data']);
+	            	$con->send(['code'=>0,'msg'=>'img upload success','data'=>['src'=>'http://13.229.73.221/tmp/up_images'.$_FILES[0]['file_name'],'name'=>$_FILES[0]['file_name']]]);
 	                return;
 	            break;
 	            default:

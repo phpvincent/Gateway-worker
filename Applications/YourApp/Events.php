@@ -35,7 +35,8 @@ class Events
     public static function onWorkerStart($worker)
     {
         //self::$db = new \Workerman\MySQL\Connection('172.31.37.203', '3306', 'admin', 'ydzsadmin', 'obj');
-        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'homestead');
+        //self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
+        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'root', 'root', 'obj');
         /*global $http_worker;
         $http_worker=new \Workerman\Worker('http://0.0.0.1:8200');
         var_dump($http_worker);
@@ -51,19 +52,17 @@ class Events
     public static function onConnect($client_id)
     {
         $ip=$_SERVER['REMOTE_ADDR'];
-        if(strstr($ip, '192.168.1')!==false) return;
-        //$ip='39.10.194.98';
-        $time = date("Y-m-d H:i:s");
+        //if(strstr($ip, '192.168.1')!==false) return;
+        $ip='39.10.194.98';
         //得到地址信息
         $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();
-        $china_country = $IpGet->getCountry();
-//        $ip_info['country']=$china_country != "局域网" ? $china_country : '台湾省';
-        $ip_info['country']=$china_country;
+        //unset($IpGet);
+        $ip_info['country']=$IpGet->getCountry();
         if(!array_key_exists($ip_info['country'], GatewayWorker\channel\sendSDK::$lan_arr)){
-            GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet fail,country not allowed','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
-            Gateway::closeClient($client_id);
-            return;
+          GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet fail,country not allowed','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
+          Gateway::closeClient($client_id);
+          return;
         }else{
           $ip_info['lan']=GatewayWorker\channel\sendSDK::$lan_arr[$ip_info['country']];
         }
@@ -88,10 +87,9 @@ class Events
     */
    public static function onMessage($client_id, $message)
    {
-        // 向所有人发送 
-        $msg=json_decode($message,true);//var_dump($msg);
-
+        // 向所有人发送
         //验证发送数据发送端（客户端、服务端），发送类型
+        $msg=json_decode($message,true);
         if(!isset($msg['user'])||!isset($msg['type'])) GateWay::closeClient($client_id);
 
         switch ($msg['user']) {
@@ -129,6 +127,38 @@ class Events
                         GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'first_client','pid'=>$pid]);
                     }else{
                         GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
+//              //初次链接，分配pid
+//              $pid='c'.time().GatewayWorker\channel\sendSDK::getlanid($client_id).rand(10000,99999);
+//              Gateway::bindUid($client_id,$pid);
+//              //$ip_info=$_SESSION[$client_id]['ip_info'];
+//              Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);var_dump('client join:'.'client_'.$ip_info['lan']);
+//              Gateway::joinGroup($client_id, 'client');
+//              $user_id=self::$db->insert('talk_user')->cols([
+//                'talk_user_lan'=>$ip_info['lan'],
+//                'talk_user_status'=>1,
+//                'talk_user_goods'=>isset($msg['goods_id']) ? $msg['goods_id'] : null,
+//                'talk_user_time'=>date('Y-m-d H:i:s',time()),
+//                'talk_user_is_shop'=>0,
+//                'talk_user_last_time'=>date('Y-m-d H:i:s',time()),
+//                'talk_user_pid'=>$pid,
+//                'talk_user_country'=>$ip_info['country']
+//              ])->query();
+//              GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'first_client','pid'=>$pid]);
+//              return;
+//            }elseif(isset($msg['type'])&&$msg['type']=='reClient'){
+//                 if(isset($ip_info['country'])&&$ip_info['country']!=null&&$ip_info['country']!='XX'){
+//                    if(!isset($msg['pid'])){
+//                      //var_dump($msg);
+//                      GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
+//                      return;
+//                    }
+//                    Gateway::bindUid($client_id,$msg['pid']);
+//                    Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
+//                    Gateway::joinGroup($client_id, 'client_'.$ip_info['country']);
+//                    Gateway::joinGroup($client_id, 'client');
+//                    $row_count=self::$db->update('talk_user')->cols(['talk_user_last_time'=>date('Y-m-d H:i:s',time()),'talk_user_status'=>0,'talk_user_country'=>$ip_info['country'],'talk_user_lan',$ip_info['lan']])->where('talk_user_pid='.$msg['pid'])->query();
+//                    if($row_count<=0){
+//                      echo 'err:reClient data update query false.pid:'.$msg['pid'];
                     }
                 }
                 return;

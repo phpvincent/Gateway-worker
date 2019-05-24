@@ -166,7 +166,7 @@ $internal_gateway->onMessage=function($con,$message){
 	                if(count($user)<=0) return $con->send(json_encode(['status'=>0,'msg'=>'user msg not found']));
 	                $con->send(json_encode(['statuc'=>1,'msg'=>$user[0]]));
 	            	break;
-	            case 'up_userinfo':
+	            case 'upUserInfo':
 	            	if($message['server']['REQUEST_METHOD']!='post') return $con->send(json_encode(['status'=>0,'msg'=>'method not allowed']));
 	            	if(!isset($_POST['talk_user_pid'])||$_POST['talk_user_pid']==false) return $con->send(json_encode(['status'=>0,'msg'=>'talk_user_pid not allowed']));
 	            	$updata_a=[];

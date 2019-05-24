@@ -11,6 +11,15 @@ class sendSDK {
         '台湾省'=>'CHI',
         '美国'=>'ENG'
       ];
+    public static $lan_alias=[
+        '菲律宾'=>'PH',
+        '印度尼西亚'=>'ID',
+        '沙特阿拉伯'=>'SA',
+        '阿联酋'=>'AE',
+        '卡塔尔'=>'QA',
+        '台湾省'=>'TW',
+        '美国'=>'US'
+    ];
     public static $lan=[];
     public static $country=[];
 	 /**
@@ -23,12 +32,12 @@ class sendSDK {
    public static function msgToClient($client_id,$msg,$status=0)
    {
       if($client_id=='all'){
-        GateWay::sendToAll(json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
+            GateWay::sendToAll(json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg,'type'=>'notice']));
       }elseif(strlen($client_id)<10){
-        Gateway::sendToGroup('client_'.$client_id,json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]),$_SERVER['GATEWAY_CLIENT_ID']);
+            Gateway::sendToGroup('client_'.$client_id,json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]),$_SERVER['GATEWAY_CLIENT_ID']);
       }else{
-        // 向当前client_id发送数据 
-        Gateway::sendToClient($client_id, json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
+             // 向当前client_id发送数据
+            Gateway::sendToClient($client_id, json_encode(['touser'=>'client','status'=>$status,'msg'=>$msg]));
       }
      
    }
@@ -42,18 +51,11 @@ class sendSDK {
     */
    public static function msgToAdmin($type=1,$group,$msg,$status=0)
    {
-    $data = static::msg_template($msg);
-    if($type==1){
-        //判断客服人员是否在线
-        $uids = Gateway::getUidListByGroup($group);
-        $group_count = count($uids);
-        $ip=$_SERVER['REMOTE_ADDR'];
-        $pid = $_SESSION['pid'];
-
-     Gateway::sendToGroup($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$data]),$_SERVER['GATEWAY_CLIENT_ID']);
-    }else{
-     Gateway::sendToClient($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$data]));
-    }
+        if($type==1){
+            Gateway::sendToGroup($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$msg]),$_SERVER['GATEWAY_CLIENT_ID']);
+        }else{
+            Gateway::sendToClient($group,json_encode(['touser'=>'admin','status'=>$status,'msg'=>$msg]));
+        }
    }
     /**
     * 根据pid向管理员发送数据
@@ -86,28 +88,46 @@ class sendSDK {
     */
    public static function resendToAdmin($tosend,$msg,$status=0)
    {
-    if(strlen($tosend)>10){
-      //发送给指定用户的消息
-      $client_id=Gateway::getClientIdByUid($tosend);
-      $lan=static::getlanfromcountry($_SESSION[$client_id]['ip_info']['country']);
-      if($lan==false) return false;
-      Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
-      return true;
-    }elseif($tosend!='all'){
-     $lan=static::getlanfromcountry($tosend);var_dump($lan);
-     if($lan==false) return false;
-     Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
-     return true;
-    }elseif($tosend=='all'){
-      Gateway::sendToGroup('admin',json_encode(['type'=>'resendToAdmin','msg'=>$msg,'touser'=>$tosend,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
-      return true;
-    }
-   } 
+        if(strlen($tosend)>10){
+              //发送给指定用户的消息
+              $client_id=Gateway::getClientIdByUid($tosend);
+              $lan=static::getlanfromcountry($_SESSION[$client_id]['ip_info']['country']);
+              if($lan==false) return false;
+              Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
+              return true;
+        }elseif($tosend!='all'){
+             $lan=static::getlanfromcountry($tosend);var_dump($lan);
+             if($lan==false) return false;
+             Gateway::sendToGroup($lan,json_encode(['type'=>'resendToAdmin','touser'=>$tosend,'msg'=>$msg,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
+             return true;
+        }elseif($tosend=='all'){
+              Gateway::sendToGroup('admin',json_encode(['type'=>'resendToAdmin','msg'=>$msg,'touser'=>$tosend,'status'=>$status]),$_SERVER['GATEWAY_CLIENT_ID']);
+              return true;
+        }
+   }
+
+    /**
+     * 根据国家获取语言
+     * @param $country
+     * @return bool|mixed
+     */
    public static function getlanfromcountry($country)
    {
-    $arr=static::$lan_arr;
+      $arr=static::$lan_arr;
       if(!array_key_exists($country, $arr)) return false;
       return $arr[$country];
+   }
+
+    /**
+     * 根据国家获取简称
+     * @param $country
+     * @return bool|mixed
+     */
+   public static function getcountryandalias($country)
+   {
+       $arr=static::$lan_alias;
+       if(!array_key_exists($country, $arr)) return false;
+       return $arr[$country];
    }
    /**
     * 湖片区语言id
@@ -127,9 +147,9 @@ class sendSDK {
      * @param $msg
      * @return array
      */
-   private static function msg_template($msg)
+   public static function msg_template($msg)
    {
-       //好友消息
+       //客服发送消息
        $data = [
            'username' => isset($msg['msg']['mine']['username']) ? $msg['msg']['mine']['username'] : '',
            'avatar' => isset($msg['msg']['mine']['avatar']) ? $msg['msg']['mine']['avatar'] : '/admin/images/13.jpg',
@@ -141,10 +161,6 @@ class sendSDK {
            'fromid' => $msg['msg']['mine']['id'],
            'timestamp' => time()*1000
        ];
-       //判断是否为新用户
-       if(isset($msg['sendUser'])){
-            array_push($data,$msg['sendUser']);
-       }
        return $data;
    }
 }

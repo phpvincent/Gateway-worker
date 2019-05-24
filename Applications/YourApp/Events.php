@@ -51,14 +51,15 @@ class Events
     public static function onConnect($client_id)
     {
         $ip=$_SERVER['REMOTE_ADDR'];
-//        if(strstr($ip, '192.168.1')!==false) return;
+        if(strstr($ip, '192.168.1')!==false) return;
         //$ip='39.10.194.98';
         $time = date("Y-m-d H:i:s");
         //得到地址信息
         $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();
         $china_country = $IpGet->getCountry();
-        $ip_info['country']=$china_country != "局域网" ? $china_country : '台湾省';
+//        $ip_info['country']=$china_country != "局域网" ? $china_country : '台湾省';
+        $ip_info['country']=$china_country;
         if(!array_key_exists($ip_info['country'], GatewayWorker\channel\sendSDK::$lan_arr)){
             GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet fail,country not allowed','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
             Gateway::closeClient($client_id);
@@ -66,7 +67,7 @@ class Events
         }else{
           $ip_info['lan']=GatewayWorker\channel\sendSDK::$lan_arr[$ip_info['country']];
         }
-        $time=date('Y-m-d H:i:S',time());
+        $time=date('Y-m-d H:i:s',time());
         //记录全局信息
         $_SESSION[$client_id]['ip_info']=$ip_info;
         $_SESSION[$client_id]['first_time']=$time;
@@ -106,8 +107,9 @@ class Events
                 //初次链接，分配pid
                 $pid='c'.time().GatewayWorker\channel\sendSDK::getlanid($client_id).rand(10000,99999);
                 Gateway::bindUid($client_id,$pid);
-                //$ip_info=$_SESSION[$client_id]['ip_info'];
                 Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);var_dump('client join:'.'client_'.$ip_info['lan']);
+                $country = \GatewayWorker\channel\sendSDK::getcountryandalias($ip_info['country']);
+                Gateway::joinGroup($client_id, 'client_'.$country);
                 Gateway::joinGroup($client_id, 'client');
                 $_SESSION['pid'] = $pid;
                 //判断用户是否存在
@@ -131,75 +133,178 @@ class Events
                 }
                 return;
             }elseif(isset($msg['type'])&&$msg['type']=='reClient'){
-                 if(isset($ip_info['country'])&&$ip_info['country']!=null&&$ip_info['country']!='XX'){
-                    if(!isset($msg['pid'])){
-                        //var_dump($msg);
-                         GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
-                         return;
-                    }
-                    Gateway::bindUid($client_id,$msg['pid']);
-                    Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
-                    Gateway::joinGroup($client_id, 'client');
-                    $_SESSION['pid'] = $msg['pid'];
-                    $time = date('Y-m-d H:i:s');
-                    //更新用户线上状态
-                     $row_count =self::$db->update('talk_user')->cols(array('talk_user_last_time'))->where('talk_user_pid="'.$msg['pid'].'"')->bindValue('talk_user_last_time', $time)->query();
-                     if($row_count){
-                         //用户上线
-                         $data = [
-                             "type"  => "friendStatus",
-                             "uid"   => $msg['pid'],
-                             "status"=> 'online'
-                         ];
+                if(!isset($ip_info['country']) || (isset($ip_info['country'])&&$ip_info['country']==null) || (isset($ip_info['country'])&&$ip_info['country']!='XX')){
+                    GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'country can not be read'],-6);
+                    return;
+                }
+                if(!isset($msg['pid'])){
+                     GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
+                     return;
+                }
+                Gateway::bindUid($client_id,$msg['pid']);
+                Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
+                $country = \GatewayWorker\channel\sendSDK::getcountryandalias($ip_info['country']);
+                Gateway::joinGroup($client_id, 'client_'.$country);
+                Gateway::joinGroup($client_id, 'client');
+                $_SESSION['pid'] = $msg['pid'];
+                $time = date('Y-m-d H:i:s');
+                //更新用户线上状态
+                 $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1])->where('talk_user_pid="'.$msg['pid'].'"')->query();
+                 if($row_count){
+                     //用户上线
+                     $data = [
+                         "type"  => "friendStatus",
+                         "uid"   => $msg['pid'],
+                         "status"=> 'online'
+                     ];
+                     if(!empty(GatewayWorker\channel\sendSDK::getlanfromcountry($ip_info['lan']))){
                          //客服好友上线
                          GatewayWorker\channel\sendSDK::msgToAdmin(1,GatewayWorker\channel\sendSDK::getlanfromcountry($ip_info['lan']),$data);
                      }
-                    return;
-                 }else{
-                     GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'ip can not be read'],-6);
-                     return;
                  }
+                 unset($row_count);
+                return;
            }elseif(isset($msg['type'])&&$msg['type']=='clientSend'){
                 //判断用户是否第一次通讯，如果第一次通讯，需先添加好友
-
-                if(isset($ip_info['country'])&&$ip_info['country']!=null&&$ip_info['country']!='XX'){
-                    $talk_user = self::$db->select('talk_user_pid')->from('talk_user')->where("talk_user_pid=".$msg['pid']."'")->row();
-                    if(!$talk_user){
-                        //添加好友
-                        $msg['sendUser'] = "new_user";
-                    }else{
-                        $msg['sendUser'] = "old_user";
-                    }
-                    GatewayWorker\channel\sendSDK::msgToAdmin(1,GatewayWorker\channel\sendSDK::getlanfromcountry($ip_info['lan']),$msg);
-                }else{
-                   GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'ip can not be read'],-6);
-                   return;
+                if(!isset($ip_info['country']) || (isset($ip_info['country'])&&$ip_info['country']==null) || (isset($ip_info['country'])&&$ip_info['country']!='XX')){
+                    GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'country can not be read'],-6);
+                    return;
                 }
+                $talk_user = self::$db->select('talk_user_name')->from('talk_user')->where("talk_user_pid='".$msg['pid']."'")->row();
+
+                $data = [
+                    'username'=> $talk_user->talk_user_name,
+                    'avatar'=> "/admin/userImages/13.jpg",
+                    'id'=> $msg['pid'],
+                    'type'=> "friend",
+                    'content'=> $msg['msg'],
+                    'cid'=> 0,
+                    'mine'=> false,
+                    'fromid'=> $msg['pid'],
+                    'timestamp'=> time()*1000,
+                ];
+                $talk_msg = self::$db->select('talk_msg_from_id')->from('talk_msg')->where("talk_msg_from_id='".$msg['pid']."'")->orwhere("talk_msg_to_id='".$msg['pid']."'")->row();
+                //判断是否为新用户（没有聊天记录为新用户，有聊天记录为老用户）
+                if(!$talk_msg){
+                    //添加好友
+                    $data['sendUser'] = "new_user";
+                }else{
+                    $data['sendUser'] = "old_user";
+                }
+                $talk_msg_data = [
+                    'talk_msg_from_id'=>$msg['pid'],
+                    'talk_msg_to_id'=>'',
+                    'talk_msg_type'=>1,
+                    'talk_msg_msg'=>$msg['msg'],
+                    'talk_msg_is_read'=>1, //0未读 1已读
+                    'talk_msg_time'=>date("Y-m-d H:i:s")
+                ];
+                if(!empty(GatewayWorker\channel\sendSDK::getlanfromcountry($ip_info['lan']))){
+                    //有客服在线
+                    //聊天记录存储 已读
+                    $insert_id = self::$db->insert('talk_msg')->cols($talk_msg_data)->query();
+                    if($insert_id){
+                        $data['cid'] = $insert_id;
+                        GatewayWorker\channel\sendSDK::msgToAdmin(1,GatewayWorker\channel\sendSDK::getlanfromcountry($ip_info['lan']),$msg);
+                    }else{
+                        GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
+                        return;
+                    }
+                }else{
+                    //客服不在线
+                    $talk_msg_data['talk_msg_is_read'] = 0;
+                    $insert_id = self::$db->insert('talk_msg')->cols($talk_msg_data)->query();
+                    if(!$insert_id){
+                        GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
+                        return;
+                    }
+                }
+                self::$db->update('talk_user')->cols(['talk_user_last_time'=>date('Y-m-d H:i:s',time())])->where("talk_user_pid='".$msg['pid']."'")->query();
            }
            break;
           case 'admin':
-          //var_dump($msg);
-          //身份验证
-            if($msg['type']=='auth'){
-              $admin=self::$db->select('*')->from('admin')->where('admin_name="'.$msg['admin_name'].'"')->offset(0)->limit(1)->query()[0];
-              if($admin==false||password_verify($msg['admin_password'], $admin['password'])==false){
-                GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'auth'],-1);
-                return;
-              }else{
-                $_SESSION[$client_id]['auth']=$admin;
-                Gateway::joinGroup($client_id,$msg['language']);var_dump($msg['language']);
-                Gateway::joinGroup($client_id,'admin');
-                Gateway::bindUid($client_id,$admin['admin_id']);
-                GatewayWorker\channel\sendSDK::msgToAdminByPid($admin['admin_id'],['pid'=>$admin['admin_id'],'type'=>'auth'],1);
-                return;
-              }
+            //身份验证
+            if(isset($msg['type']) && $msg['type']=='auth'){
+                $admin=self::$db->select('*')->from('admin')->where('admin_name="'.$msg['admin_name'].'"')->offset(0)->limit(1)->query()[0];
+                if($admin==false||password_verify($msg['admin_password'], $admin['password'])==false){
+                    GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'auth'],-1);
+                    return;
+                }else{
+                    $_SESSION[$client_id]['auth']=$admin;
+                    Gateway::joinGroup($client_id,$msg['language']);var_dump($msg['language']); //TODO 需要完善
+                    Gateway::joinGroup($client_id,'admin');
+                    Gateway::bindUid($client_id,$admin['admin_id']);
+                    $_SESSION['pid'] = $admin['admin_id'];
+                    self::$db->update('admin_talk')->cols(['admin_talk_status'=>1,'admin_talk_last_time'=>date('Y-m-d H:i:s',time())])->where('admin_primary_id='.$admin['admin_id'])->query();
+                    //通知其它客服，客服上线
+//                    //客服上线
+//                    $data = [
+//                        "type"  => "friendStatus",
+//                        "uid"   => $admin['admin_id'],
+//                        "status"=> 'online'
+//                    ];
+                    //告诉自己，通讯成功
+                    GatewayWorker\channel\sendSDK::msgToAdminByPid($admin['admin_id'],['pid'=>$admin['admin_id'],'type'=>'auth'],1);
+
+
+                    //查看是否有未读消息，如果有，直接推送
+                    $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_to_id="'.$admin['admin_id'].'"')->where('talk_msg_is_read=0')->query();
+                    if(!empty($talk_msg_infos)){
+                        foreach ($talk_msg_infos as $talk_msg_info){
+                            if(strlen($talk_msg_info['talk_msg_to_id'])>10){
+                                $talk_user = self::$db->select('talk_user_name')->from('talk_user')->where("talk_user_id='".$talk_msg_info['talk_msg_to_id'].'"')->row();
+                                if(!$talk_user){
+                                    GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
+                                    return;
+                                }
+                                $username = $talk_user['talk_user_name'];
+                                $avatar = "/admin/userImages/13.jpg";
+                            }else{
+                                $admin_talk = self::$db->select('admin_talk_name,admin_talk_img')->from('admin_talk')->where("admin_primary_id='".$talk_msg_info['talk_msg_to_id']."'")->row();
+                                if($admin_talk) {
+                                    $username = $admin_talk['admin_talk_name'];
+                                    $avatar = $admin_talk['admin_talk_img'] ? $admin_talk['admin_talk_img'] : "/admin/userImages/13.jpg";
+                                }else{
+                                    $admin_info = self::$db->select('admin_show_name')->from('admin')->where("admin_id='".$talk_msg_info['talk_msg_to_id']."'")->row();
+                                    if(!$admin_info){
+                                        GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
+                                        return;
+                                    }
+                                    $username = $admin_info['admin_show_name'];
+                                    $avatar = "/admin/userImages/13.jpg";
+                                }
+                            }
+                            $data = [
+                                'username'=> $username,
+                                'avatar'=> $avatar,
+                                'id'=> $talk_msg_info['talk_msg_to_id'],
+                                'type'=> "friend",
+                                'content'=> $talk_msg_info['talk_msg_msg'],
+                                'cid'=> $talk_msg_info['talk_msg_id'],
+                                'mine'=> $talk_msg_info['talk_msg_to_id'] == $admin['admin_id'] ? true : false,
+                                'fromid'=> $talk_msg_info['talk_msg_to_id'],
+                                'timestamp'=> time()*1000,
+                            ];
+                            GatewayWorker\channel\sendSDK::msgToAdminByPid($admin['admin_id'],$data);
+                            //修改消息为已读
+                            self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where("talk_msg_id='".$talk_msg_info['talk_msg_id']."'")->query();
+                        }
+                    }
+
+                    //告诉其它客服上线
+//                    if(!empty(GatewayWorker\channel\sendSDK::getlanfromcountry($msg['language']))){
+//                        //客服好友上线
+//                        GatewayWorker\channel\sendSDK::msgToAdmin(1,GatewayWorker\channel\sendSDK::getlanfromcountry($msg['language']),$data);
+//                    }
+                    return;
+                }
             }
-          //数据推送
+            //数据推送
             if(!isset($_SESSION[$client_id])||!isset($_SESSION[$client_id]['auth'])){
-              //验证身份
-              GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'adminSend'],-2);
-              GateWay::closeClient($client_id);
-              return;
+                //验证身份
+                GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'adminSend'],-2);
+                GateWay::closeClient($client_id);
+                return;
             }
             //推送数据
             if(!isset($msg['touser'])){
@@ -207,36 +312,92 @@ class Events
               return;
             }elseif($msg['touser']=='all'){
               //推送给所有客户端
-              if(isset($msg['country'])){
-                 if(!isset($msg['msg'])) GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'msg send fail,msg not found'],-5);
-                $msg_arr=[];
-                $msg_arr['type']='adminSend';
-                $msg_arr['msg']=$msg['msg'];
-                GatewayWorker\channel\sendSDK::msgToClient($msg['country'],$msg_arr);
-                 //转发给对应语种服务端
-                 $code=GatewayWorker\channel\sendSDK::resendToAdmin($msg['country'],$msg['msg']);var_dump($client_id);
-                 if($code==false){
-                  GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
-                 }
-              }else{
-                if(!isset($msg['msg'])) GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'msg send fail,msg not found'],-5);
-                GatewayWorker\channel\sendSDK::msgToClient('all',$msg['msg']);
-                //转发给所有服务端
-                 $code=GatewayWorker\channel\sendSDK::resendToAdmin('all',$msg['msg']);
-                 if($code==false){
-                  GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
-                 }
-              }
-              return;
-            }else{
-              GatewayWorker\channel\sendSDK::msgToClientByPid($msg['touser'],$msg['msg']);
+              if(isset($msg['country'])){ //发给用相同语言的客户以及客服
+                    if(!isset($msg['msg'])) GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'msg send fail,msg not found'],-5);
+                    $msg_arr=[];
+                    $msg_arr['type']='adminSend';
+                    $msg_arr['msg']=$msg['msg'];
+                    $country = \GatewayWorker\channel\sendSDK::getcountryandalias($msg['country']);
+                    GatewayWorker\channel\sendSDK::msgToClient($country,$msg_arr);
+                    $client_ids=Gateway::getUidListByGroup('client_'.$country);
+                    if(!empty($client_ids)){
+                          $str = '';
+                          $talk_msg_from_id = $_SESSION[$client_id]['auth']['admin_id'];
+                          $talk_msg_time = date('Y-m-d H:i:s');
+                          $talk_msg_msg = $msg['msg'];
+                          foreach($client_ids as $v) {
+                              $str .= "('$talk_msg_from_id','$v',1,'$talk_msg_time','$talk_msg_msg',1),";
+                          }
+                          $str = trim($str,',');
+                          self::$db->query('INSERT INTO `talk_msg` (`talk_msg_from_id`,`talk_msg_to_id`,`talk_msg_type`,`talk_msg_time`,`talk_msg_msg`,`talk_msg_is_read`) VALUE '.$str);
+                    }else{
+                        GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,client not online'],-4);
+                    }
+
+                     //转发给对应语种服务端
+                     $code=GatewayWorker\channel\sendSDK::resendToAdmin($msg['country'],$msg['msg']);var_dump($client_id);
+                     if($code==false){
+                            GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
+                     }
+              }else{ //广播
+                    if(!isset($msg['msg'])){
+                        GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'msg send fail,msg not found'],-5);
+                        return;
+                    }
+                    $uidList = Gateway::getAllUidList();
+                    if(!empty($uidList)){
+                          $str = '';
+                          $talk_msg_from_id = $_SESSION[$client_id]['auth']['admin_id'];
+                          $talk_msg_time = date('Y-m-d H:i:s');
+                          $talk_msg_msg = $msg['msg'];
+                          foreach($uidList as $v) {
+                              $str .= "('$talk_msg_from_id','$v',1,'$talk_msg_time','$talk_msg_msg',1),";
+                          }
+                          $str = trim($str,',');
+                          self::$db->query('INSERT INTO `talk_msg` (`talk_msg_from_id`,`talk_msg_to_id`,`talk_msg_type`,`talk_msg_time`,`talk_msg_msg`,`talk_msg_is_read`) VALUE '.$str);
+                    }
+
+                    GatewayWorker\channel\sendSDK::msgToClient('all',$msg['msg']); //发送所以在线人员
+                    //转发给所有服务端
+//                     $code=GatewayWorker\channel\sendSDK::resendToAdmin('all',$msg['msg']);
+//                     if($code==false){
+//                            GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
+//                     }
+                  }
+                  return;
+            }else{ //一对一 私聊
+                $talk_msg_data = [
+                    'talk_msg_from_id'=>$_SESSION[$client_id]['auth']['admin_id'],
+                    'talk_msg_to_id'=>$msg['touser'],
+                    'talk_msg_type'=>1,
+                    'talk_msg_time'=>date('Y-m-d H:i:s',time()),
+                    'talk_msg_msg'=>$msg['msg'],
+                    'talk_msg_is_read'=>1
+                ];
+                //好友消息
+                $data = \GatewayWorker\channel\sendSDK::msg_template($msg);
+                if(Gateway::isUidOnline($msg['touser'])){  //在线
+                      //1. 发给客户
+                      self::$db->insert('talk_msg')->cols($talk_msg_data)->query();
+//                      GatewayWorker\channel\sendSDK::msgToClientByPid($msg['touser'],$msg['msg']);
+                      GatewayWorker\channel\sendSDK::msgToClientByPid($msg['touser'],$data);
+                      if(isset($msg['language'])){
+                          //2.发送相应的客服(保持数据同步)
+                          GatewayWorker\channel\sendSDK::resendToAdmin($msg['language'],$talk_msg_data);
+                      }
+                      GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSendResponse','msg'=>'success','account'=>$msg['account']],0);
+                }else{ //不在线
+                      $talk_msg_data['talk_msg_is_read'] = 0;
+                      self::$db->insert('talk_msg')->cols($talk_msg_data)->query();
+                      GatewayWorker\channel\sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSendResponse','msg'=>'failed','account'=>$msg['account']],0);
+                }
+              
             }
             break;
           default:
             # code...
             break;
         }
-       //Gateway::sendToAll("$client_id said $message\r\n");
    }
    
    /**
@@ -247,23 +408,25 @@ class Events
    {
        $pid = $_SESSION['pid'];
 
-       //用户下线
-       $row_count =self::$db->update('talk_user')->cols(array('talk_user_status'))->where('talk_user_pid="'.$pid.'"')->bindValue('talk_user_status', 1)->query();
+       if(strlen($pid)>10){
+           //用户下线
+           $row_count =self::$db->update('talk_user')->cols(array('talk_user_status'))->where('talk_user_pid="'.$pid.'"')->bindValue('talk_user_status', 0)->query();
 
-//       $admin_info = self::$db->query("update admin_info set admin_info_status=1 where admin_id='". $pid ."'");
-       //通知客服，用户下线
-       if(isset($_SESSION[$client_id]['ip_info']['country']) && $_SESSION[$client_id]['ip_info']['country'] && $row_count){
-           //用户上线
-           $data = [
-               "type"  => "friendStatus",
-               "uid"   => $pid,
-               "status"=> 'offline'
-           ];
-           static::msgToAdmin(1,$_SESSION[$client_id]['ip_info']['country'],$data);
+           //通知客服，用户下线
+           if(isset($_SESSION[$client_id]['ip_info']['country']) && $_SESSION[$client_id]['ip_info']['country'] && $row_count){
+               //用户离线
+               $data = [
+                   "type"  => "friendStatus",
+                   "uid"   => $pid,
+                   "status"=> 'offline'
+               ];
+               static::msgToAdmin(1,$_SESSION[$client_id]['ip_info']['country'],$data);
+           }
+           unset($row_count);
+       }else{
+           //客服下线
+           self::$db->update('admin_talk')->cols(array('admin_talk_status'))->where('admin_primary_id="'.$pid.'"')->bindValue('admin_talk_status', 0)->query();
        }
-
-       // 通知服务端
-       GatewayWorker\channel\sendSDK::msgToAdmin(1,'admin',['msg'=>"$client_id($pid) logout",'type'=>'clientClose','client_id'=>$client_id,'pid'=>$pid]);
    }
   public static function http_listen($con)
   {

@@ -3,12 +3,11 @@ use \Workerman\Worker;
 use \GatewayWorker\Lib\Gateway;
 use \Workerman\Autoloader;
 require_once __DIR__ . '/../../vendor/autoload.php';
-require_once './vendor/mysql-master/src/Connection.php';
+require_once './Applications/YourApp/channel/Router.php';
 Autoloader::setRootPath(__DIR__);
 
 // #### 内部推送端口(假设当前服务器内网ip为192.168.100.100) ####
 // #### 端口不能与原来start_gateway.php中一样 ####
-\Workerman\Protocols\Http::header('Access-Control-Allow-Origin:*');
 $internal_gateway = new Worker("http://0.0.0.0:7273");
 $internal_gateway->name='internalGateway';
 // #### 不要与原来start_gateway.php的一样####
@@ -18,14 +17,25 @@ $internal_gateway->startPort = 3300;
 //$internal_gateway->registerAddress = '127.0.0.1:1238';
 $internal_gateway->onWorkerStart=function($worker)
 {	
-	global $db_http;
-	//$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
-	$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'root', 'root', 'obj');
+	global $Router,$config;
+	$Router=new GatewayWorker\channel\Router();
+	$Router::setDb($config['database']['route'],$config['database']['port'], $config['database']['username'], $config['database']['password'],$config['database']['database']);
+	$Router::setRouter(
+		GatewayWorker\channel\Router::group('get',$config['routers']['get']),
+		GatewayWorker\channel\Router::group('post',$config['routers']['post'])
+	);
 };
 $internal_gateway->onMessage=function($con,$message){
-	global $db_http;
-	\Workerman\Protocols\Http::header('Access-Control-Allow-Origin: *');//var_dump($con->id);
-	 if((isset($message['get'])||isset($message['post']))&&isset($message['server']['REQUEST_METHOD'])){var_dump($message);
+	global $Router;
+	try {
+		$Router->http_set($message['server']['REQUEST_METHOD'])->http_data(GatewayWorker\channel\Router::get_http_data($message))->exec($con);
+	} catch (\Exception $e) {
+		$con->send(json_encode(['status'=>0,'msg'=>$e->getMessage()]));
+	}
+	return;
+	/////////////////////////////////////////////////////////////
+	/*GatewayWorker\channel\Router::method($message['server']['REQUEST_METHOD']);
+	 if((isset($message['get'])||isset($message['post']))&&isset($message['server']['REQUEST_METHOD'])){var_dump($message);*/
 		   /*if(!isset($_GET['admin_id'])||!isset($_POST['admin_id']))  return $con->send(json_encode(['status'=>0,'msg'=>'admin_id not found']));
 		   $client_id=isset($_GET['admin_id']) ? $_GET['admin_id'] : $_POST['admin_id'];
 		   if($client_id==false) $client_id=$con->id;
@@ -36,7 +46,7 @@ $internal_gateway->onMessage=function($con,$message){
 	              return;
 	        }*/
 	      //http
-	      $http_data=isset($message['get']) ? $message['get'] : $message['post'];
+	      /*$http_data=isset($message['get']) ? $message['get'] : $message['post'];
 	      if(!isset($http_data['type'])) return $con->send(json_encode(['status'=>0,'msg'=>'can not find type'])); 
 	          switch ($http_data['type']) {
 	            case 'people_num':
@@ -178,6 +188,15 @@ $internal_gateway->onMessage=function($con,$message){
 	            	$db_http->update('talk_user')->cols($updata_a)->where('talk_user_pid="'.$_POST['pid'].'"')->query();
 	            	return $con->send(json_encode(['status'=>1,'msg'=>$_POST['pid'].'update success']));
 	            	break;
+	            case 'upAdminInfo':
+	            	if($message['server']['REQUEST_METHOD']!='POST') return $con->send(json_encode(['status'=>0,'msg'=>'method not allowed']));
+	            	if(!isset($_POST['admin_id'])||$_POST['admin_id']==false) return $con->send(json_encode(['status'=>0,'msg'=>'admin_id not allowed']));
+	            	$updata_a=[];
+	            	if(isset($_POST['admin_talk_sign'])&&$_POST['admin_talk_sign']!=null) $updata_a['admin_talk_sign']=$_POST['admin_talk_sign'];
+	            	if($updata_a==[]) return $con->send(json_encode(['status'=>0,'msg'=>'data unallow']));
+	            	$db_http->update('admin_talk')->cols($updata_a)->where('admin_primary_id="'.$_POST['admin_id'].'"')->query();
+	            	return $con->send(json_encode(['status'=>1,'msg'=>$_POST['admin_id'].'update success']));
+	            	break;
 	            case 'file_upload':
 	            	if(count($_FILES)>1||count($_FILES)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'file count not allowed']));
 	            	if($_FILES[0]['file_size']>10485760) return $con->send(json_encode(['code'=>2,'msg'=>'file size not allowed']));
@@ -198,7 +217,7 @@ $internal_gateway->onMessage=function($con,$message){
 	          }
 	          return;
 	      }
-      $con->send(json_encode(['status'=>0,'msg'=>'http type not allowed']));
+      $con->send(json_encode(['status'=>0,'msg'=>'http type not allowed']));*/
 };
 // #### 内部推送端口设置完毕 ####
 

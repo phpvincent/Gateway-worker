@@ -28,6 +28,8 @@ define('GLOBAL_START', 1);
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/Applications/YourApp/gateway_http.php';
+global $config;
+$config=require_once __DIR__.'/Applications/YourApp/config.php';
 
 // 加载所有Applications/*/start.php，以便启动所有服务
 foreach(glob(__DIR__.'/Applications/*/start*.php') as $start_file)

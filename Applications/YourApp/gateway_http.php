@@ -19,8 +19,8 @@ $internal_gateway->startPort = 3300;
 $internal_gateway->onWorkerStart=function($worker)
 {	
 	global $db_http;
-	//$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
-	$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'root', 'root', 'obj');
+	$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
+	//$db_http = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'root', 'root', 'obj');
 };
 $internal_gateway->onMessage=function($con,$message){
 	global $db_http;
@@ -164,18 +164,18 @@ $internal_gateway->onMessage=function($con,$message){
 	                if(!isset($_POST['pid'])) return $con->send(json_encode(['status'=>0,'msg'=>'pid not find']));
 	                $user=$db_http->select('*')->from('talk_user')->where('talk_user_pid="'.$_POST['pid'].'"')->offset(0)->limit(1)->query();
 	                if(count($user)<=0) return $con->send(json_encode(['status'=>0,'msg'=>'user msg not found']));
-	                $con->send(json_encode(['statuc'=>1,'msg'=>$user[0]]));
+	                $con->send(json_encode(['status'=>1,'msg'=>$user[0]]));
 	            	break;
 	            case 'upUserInfo':
-	            	if($message['server']['REQUEST_METHOD']!='post') return $con->send(json_encode(['status'=>0,'msg'=>'method not allowed']));
-	            	if(!isset($_POST['talk_user_pid'])||$_POST['talk_user_pid']==false) return $con->send(json_encode(['status'=>0,'msg'=>'talk_user_pid not allowed']));
+	            	if($message['server']['REQUEST_METHOD']!='POST') return $con->send(json_encode(['status'=>0,'msg'=>'method not allowed']));
+	            	if(!isset($_POST['pid'])||$_POST['pid']==false) return $con->send(json_encode(['status'=>0,'msg'=>'talk_user_pid not allowed']));
 	            	$updata_a=[];
 	            	if(isset($_POST['talk_user_phone'])&&$_POST['talk_user_phone']!=null) $updata_a['talk_user_phone']=$_POST['talk_user_phone'];
 	            	if(isset($_POST['talk_user_email'])&&$_POST['talk_user_email']!=null) $updata_a['talk_user_email']=$_POST['talk_user_email'];
 	            	if(isset($_POST['talk_user_name'])&&$_POST['talk_user_name']!=null) $updata_a['talk_user_name']=$_POST['talk_user_name'];
 	            	if($updata_a==[]) return $con->send(json_encode(['status'=>0,'msg'=>'data unallow']));
-	            	$db_http->update('talk_user')->cols($updata_a)->where('talk_user_pid='.$_POST['talk_user_pid'])->query();
-	            	return $con->send(json_encode(['status'=>1,'msg'=>$_POST['talk_user_pid'].'update success']));
+	            	$db_http->update('talk_user')->cols($updata_a)->where('talk_user_pid="'.$_POST['pid'].'"')->query();
+	            	return $con->send(json_encode(['status'=>1,'msg'=>$_POST['pid'].'update success']));
 	            	break;
 	            case 'file_upload':
 	            	if(count($_FILES)>1||count($_FILES)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'file count not allowed']));

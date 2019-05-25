@@ -173,6 +173,7 @@ $internal_gateway->onMessage=function($con,$message){
 	            	if(isset($_POST['talk_user_phone'])&&$_POST['talk_user_phone']!=null) $updata_a['talk_user_phone']=$_POST['talk_user_phone'];
 	            	if(isset($_POST['talk_user_email'])&&$_POST['talk_user_email']!=null) $updata_a['talk_user_email']=$_POST['talk_user_email'];
 	            	if(isset($_POST['talk_user_name'])&&$_POST['talk_user_name']!=null) $updata_a['talk_user_name']=$_POST['talk_user_name'];
+	            	if(isset($_POST['talk_user_remark'])&&$_POST['talk_user_remark']!=null) $updata_a['talk_user_remark']=$_POST['talk_user_remark'];
 	            	if($updata_a==[]) return $con->send(json_encode(['status'=>0,'msg'=>'data unallow']));
 	            	$db_http->update('talk_user')->cols($updata_a)->where('talk_user_pid="'.$_POST['pid'].'"')->query();
 	            	return $con->send(json_encode(['status'=>1,'msg'=>$_POST['pid'].'update success']));

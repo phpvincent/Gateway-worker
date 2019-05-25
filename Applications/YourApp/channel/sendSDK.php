@@ -147,20 +147,41 @@ class sendSDK {
      * @param $msg
      * @return array
      */
-   public static function msg_template($msg)
-   {
-       //客服发送消息
-       $data = [
-           'username' => isset($msg['msg']['mine']['username']) ? $msg['msg']['mine']['username'] : '',
-           'avatar' => isset($msg['msg']['mine']['avatar']) ? $msg['msg']['mine']['avatar'] : '/admin/images/13.jpg',
-           'id' => isset($msg['msg']['mine']['id']) ? $msg['msg']['mine']['id'] : 0,
-           'type' => $msg['msg']['to']['type'],
-           'content' => isset($msg['msg']['mine']['content']) ? $msg['msg']['mine']['content'] : '',
-           'cid' => 0,
-           'mine'=> $msg['pid'] == $msg['msg']['mine']['id'] ? true : false,//要通过判断是否是我自己发的
-           'fromid' => $msg['msg']['mine']['id'],
-           'timestamp' => time()*1000
-       ];
-       return $data;
-   }
+//   public static function msg_template($msg)
+//   {
+//       //客服发送消息
+//       $data = [
+//           'username' => isset($msg['msg']['mine']['username']) ? $msg['msg']['mine']['username'] : '',
+//           'avatar' => isset($msg['msg']['mine']['avatar']) ? $msg['msg']['mine']['avatar'] : '/admin/images/13.jpg',
+//           'id' => isset($msg['msg']['mine']['id']) ? $msg['msg']['mine']['id'] : 0,
+//           'type' => $msg['msg']['to']['type'],
+//           'content' => isset($msg['msg']['mine']['content']) ? $msg['msg']['mine']['content'] : '',
+//           'cid' => 0,
+//           'mine'=> $msg['pid'] == $msg['msg']['mine']['id'] ? true : false,//要通过判断是否是我自己发的
+//           'fromid' => $msg['msg']['mine']['id'],
+//           'timestamp' => time()*1000
+//       ];
+//       return $data;
+//   }
+    /**
+     * 消息模板
+     * @param $msg
+     * @return array
+     */
+    public static function msg_template($username,$avatar,$id,$content,$fromid,$cid,$mine,$type="friend")
+    {
+        //客服发送消息
+        $data = [
+            'username' => $username,
+            'avatar' => $avatar,
+            'id' => $id,
+            'type' => $type,
+            'content' => $content,
+            'cid' => $cid,
+            'mine'=> $mine,//要通过判断是否是我自己发的
+            'fromid' => $fromid,
+            'timestamp' => time()*1000
+        ];
+        return $data;
+    }
 }

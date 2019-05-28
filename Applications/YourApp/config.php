@@ -1,5 +1,12 @@
 <?php
 return [
+	/*'database'=>[
+		'route'=>'127.0.0.1',
+		'port'=>'3306',
+		'username'=>'homestead',
+		'password'=>'secret',
+		'database'=>'obj'
+	],*/
 	'database'=>[
 		'route'=>'127.0.0.1',
 		'port'=>'3306',

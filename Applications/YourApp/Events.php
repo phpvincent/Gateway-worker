@@ -38,7 +38,7 @@ class Events
     {
         global $config;
         //self::$db = new \Workerman\MySQL\Connection('172.31.37.203', '3306', 'admin', 'ydzsadmin', 'obj')
-        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'homestead');
+        self::$db = new \Workerman\MySQL\Connection($config['database']['route'],$config['database']['port'], $config['database']['username'], $config['database']['password'],$config['database']['database']);
         //self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'root', 'root', 'obj');
         /*global $http_worker;
         $http_worker=new \Workerman\Worker('http://0.0.0.1:8200');
@@ -100,8 +100,8 @@ class Events
             }
             $ip_info=$_SESSION[$client_id]['ip_info'];
             $get_message_res = \GatewayWorker\channel\onMessageClient::get_message($client_id,$msg,$ip_info,self::$db);
-            if($get_message_res === false){
-                \GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'Method does not exist'],-9);
+            if($get_message_res === false) {
+                \GatewayWorker\channel\sendSDK::msgToClient($client_id, ['type' => 'clientSend', 'err' => 'Method does not exist'], -9);
             }
             return;
           case 'admin':

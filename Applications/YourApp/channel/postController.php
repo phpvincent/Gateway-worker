@@ -33,17 +33,19 @@ class postController extends Controller{
     	return $con->send(json_encode(['status'=>1,'msg'=>$http_data['admin_id'].'update success']));
 	}
 	public static function file_upload($con,$db_http,$http_data)
-	{
+	{	
+		global $config;
     	if(count($_FILES)>1||count($_FILES)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'file count not allowed']));
     	if($_FILES[0]['file_size']>10485760) return $con->send(json_encode(['code'=>2,'msg'=>'file size not allowed']));
-    	file_put_contents('/tmp/up_FILESs'.$_FILES[0]['file_name'], $_FILES[0]['file_data']);
-    	$con->send(['code'=>0,'msg'=>'file upload success','data'=>['src'=>'http://13.229.73.221/tmp/up_FILESs'.$_FILES[0]['file_name'],'name'=>$_FILES[0]['file_name']]]);
+    	file_put_contents('/tmp/up_files/'.$_FILES[0]['file_name'], $_FILES[0]['file_data']);
+    	$con->send(json_encode(['code'=>0,'msg'=>'file upload success','data'=>['src'=>'http://'.$config['server']['server'].'/up_files/'.$_FILES[0]['file_name'],'name'=>$_FILES[0]['file_name']]]));
 	}
 	public static function img_upload($con,$db_http,$http_data)
-	{
+	{	
+		global $config;
     	if(count($_FILES)>1||count($_FILES)<=0) return $con->send(json_encode(['code'=>1,'msg'=>'img count not allowed']));
     	if($_FILES[0]['file_size']>10485760) return $con->send(json_encode(['code'=>2,'msg'=>'img size not allowed']));
-    	file_put_contents('/tmp/up_images'.$_FILES[0]['file_name'], $_FILES[0]['file_data']);
-    	$con->send(['code'=>0,'msg'=>'img upload success','data'=>['src'=>'http://13.229.73.221/tmp/up_images'.$_FILES[0]['file_name'],'name'=>$_FILES[0]['file_name']]]);
+    	file_put_contents('/tmp/up_images/'.$_FILES[0]['file_name'], $_FILES[0]['file_data']);
+    	$con->send(json_encode(['code'=>0,'msg'=>'img upload success','data'=>['src'=>'http://'.$config['server']['server'].'/up_images/'.$_FILES[0]['file_name']]]));
 	}
 }

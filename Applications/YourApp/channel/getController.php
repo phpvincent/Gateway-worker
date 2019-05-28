@@ -20,7 +20,7 @@ class getController extends Controller{
            	'id'=>$http_data['admin_id'],
            	'status'=>'online',
            	'sign'=>$admin['admin_talk_sign'],
-           	'avatar'=>$admin['admin_talk_img']
+           	'avatar'=>($admin['admin_talk_img']==null ? 'http://13.229.73.221/images/admin.gif' : $admin['admin_talk_img'])
            ];
            $group=[];
      
@@ -125,5 +125,57 @@ class getController extends Controller{
             $data['msg']='';
             $con->send(json_encode($data));
             unset($group_id,$data,$group_list);
+	}
+	public static function getTalkMsg($con,$db_http,$http_data)
+	{
+		$id=$http_data['id'];
+		$admin_id=$http_data['admin_id'];
+		$page=$http_data['page'];
+		$limit=$http_data['limit'];
+		$offset=($page-1)*$limit;
+		if(is_numeric($id)){
+			$data=$db_http->select('*')->from('talk_msg')->where("(talk_msg_to_id='".$id."' AND talk_msg_from_id='".$admin_id."') or ( talk_msg_to_id='".$admin_id."' AND talk_msg_from_id='".$id."') ")->orderByASC(['talk_msg_time'])->limit($limit)->offset($offset)->query();
+			if($data!=null&&count($data)>0){
+				$con->send(json_encode(['status'=>0,'msg'=>$data]));
+			}else{
+				$con->send(json_encode(['status'=>1,'msg'=>'msg not found']));
+			}
+			unset($data);
+		}else{
+			//查找对应客户的聊天记录
+			$data=$db_http->select('*')->from('talk_msg')->leftJoin('talk_user','talk_msg.talk_msg_from_id = talk_user.talk_user_pid')->leftJoin('admin_talk','talk_msg.talk_msg_from_id = admin_talk.admin_primary_id')->where('talk_msg_to_id="'.$id.'" or talk_msg_from_id="'.$id.'"')->orderByASC(['talk_msg_time'])->limit($limit)->offset($offset)->query();
+			$returnmsg=[];
+			if($data==null) $data=[];var_dump(count($data));
+			foreach ($data as $key => $value) {
+				if($value['talk_msg_from_id']!=$id){
+					$returnmsg[$key]['avatar']=$value['admin_talk_img']==null ? 'http://13.229.73.221/images/admin.gif' : $value['admin_talk_img'];
+					$returnmsg[$key]['timestamp']=$value['talk_msg_time'];
+					$returnmsg[$key]['username']=$value['admin_talk_name'];
+					$returnmsg[$key]['content']=$value['talk_msg_msg'];
+					$returnmsg[$key]['talk_msg_from_id']=$value['talk_msg_from_id'];
+				}else{
+					$returnmsg[$key]['avatar']='http://13.229.73.221/images/user.gif';
+					$returnmsg[$key]['timestamp']=$value['talk_msg_time'];
+					$returnmsg[$key]['username']=($value['talk_user_name']==null ? $value['talk_user_pid'] : $value['talk_user_name']);
+					$returnmsg[$key]['content']=$value['talk_msg_msg'];
+					$returnmsg[$key]['talk_msg_from_id']=$value['talk_msg_from_id'];
+				}
+			}
+			//var_dump($data);
+
+			if($data!=null&&count($data)>0){
+				$con->send(json_encode(['status'=>0,'msg'=>$returnmsg]));
+			}else{
+				$con->send(json_encode(['status'=>1,'msg'=>'msg not found']));
+			}
+			unset($data);
+		}
+	}
+	public static function getTalkMsgCount($con,$db_http,$http_data)
+	{
+		$id=$http_data['id'];
+		$admin_id=$http_data['admin_id'];
+		$count=$db_http->select('count(*) as counts')->from('talk_msg')->where("(talk_msg_to_id='".$id."' AND talk_msg_from_id='".$admin_id."') or ( talk_msg_to_id='".$admin_id."' AND talk_msg_from_id='".$id."') ")->query();
+		$con->send(json_encode(['status'=>0,'msg'=>$count[0]['counts']]));
 	}
 }

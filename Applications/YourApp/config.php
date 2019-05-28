@@ -5,7 +5,7 @@ return [
 		'port'=>'3306',
 		'username'=>'homestead',
 		'password'=>'secret',
-		'database'=>'obj'
+		'database'=>'homestead'
 	],
 	'routers'=>[
 		'get'=>[

@@ -36,7 +36,7 @@ class Events
     {
         global $config;
         //self::$db = new \Workerman\MySQL\Connection('172.31.37.203', '3306', 'admin', 'ydzsadmin', 'obj')
-        self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'homestead', 'secret', 'obj');
+        self::$db = new \Workerman\MySQL\Connection($config['database']['route'],$config['database']['port'], $config['database']['username'], $config['database']['password'],$config['database']['database']);
         //self::$db = new \Workerman\MySQL\Connection('127.0.0.1', '3306', 'root', 'root', 'obj');
         /*global $http_worker;
         $http_worker=new \Workerman\Worker('http://0.0.0.1:8200');
@@ -109,7 +109,7 @@ class Events
                 Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);var_dump('client join:'.'client_'.$ip_info['lan']);
                 $country = \GatewayWorker\channel\sendSDK::getcountryandalias($ip_info['country']);
                 Gateway::joinGroup($client_id, 'client_'.$country);
-                Gateway::joinGroup($client_id, 'client');
+                Gateway::joinGroup($client_id, 'client');var_dump($_SESSION);
                 $_SESSION['pid'] = $pid;
                 //判断用户是否存在
                 $talk_user = self::$db->select('talk_user_pid')->from('talk_user')->where("talk_user_pid= '$pid' ")->row();
@@ -287,6 +287,7 @@ class Events
                         foreach ($talk_msg_infos1 as $talk_admin_msg){
                             //客服转发同步数据
                             if($talk_admin_msg['talk_msg_from_id'] == $admin['admin_id']){
+                              //获取所有自发消息
                                 $admin_talk = self::$db->select('admin_talk_name,admin_talk_img')->from('admin_talk')->where("admin_primary_id='".$admin['admin_id']."'")->row();
                                 if($admin_talk){
                                     $username = $admin_talk['admin_talk_name'];

@@ -56,7 +56,7 @@ class Events
     {
         $ip=$_SERVER['REMOTE_ADDR'];
         //if(strstr($ip, '192.168.1')!==false) return;
-//        $ip='39.10.194.98';
+        $ip='39.10.194.98';
         //得到地址信息
         $IpGet=new GatewayWorker\channel\getIpInfo\IpGet($ip);
         $ip_info=$IpGet->getIpMsg();

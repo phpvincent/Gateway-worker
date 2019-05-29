@@ -1,11 +1,18 @@
 <?php
 return [
-	'database'=>[
+	/*'database'=>[
 		'route'=>'127.0.0.1',
 		'port'=>'3306',
 		'username'=>'homestead',
 		'password'=>'secret',
-		'database'=>'homestead'
+		'database'=>'obj'
+	],*/
+	'database'=>[
+		'route'=>'127.0.0.1',
+		'port'=>'3306',
+		'username'=>'root',
+		'password'=>'root',
+		'database'=>'obj'
 	],
 	'routers'=>[
 		'get'=>[
@@ -24,6 +31,7 @@ return [
 		],
 	],
 	'server'=>[
-		'server'=>'192.168.10.166'
+		//'server'=>'192.168.10.166'
+		'server'=>'13.229.73.221'
 	]
 ];

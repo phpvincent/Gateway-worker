@@ -200,7 +200,7 @@ class getController extends Controller{
 	{
 		$id=$http_data['id'];
 		$admin_id=$http_data['admin_id'];
-		$count=$db_http->select('count(*) as counts')->from('talk_msg')->where("(talk_msg_to_id='".$id."' AND talk_msg_from_id='".$admin_id."') or ( talk_msg_to_id='".$admin_id."' AND talk_msg_from_id='".$id."') ")->query();
+		$count=$db_http->select('count(*) as counts')->from('talk_msg')->where('talk_msg_to_id="'.$id.'" or talk_msg_from_id="'.$id.'"')->query();
 		$con->send(json_encode(['status'=>0,'msg'=>$count[0]['counts']]));
 	}
 }

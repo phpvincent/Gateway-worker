@@ -123,21 +123,30 @@ class Events
     */
    public static function onClose($client_id)
    {
-       var_dump('hello world');
+       var_dump('bye bye');
        $pid = $_SESSION['pid'];
        if(strlen($pid)>10){
            //用户下线
            $row_count =self::$db->update('talk_user')->cols(array('talk_user_status'))->where('talk_user_pid="'.$pid.'"')->bindValue('talk_user_status', 0)->query();
-
            //通知客服，用户下线
            if(isset($_SESSION[$client_id]['ip_info']['country']) && $_SESSION[$client_id]['ip_info']['country'] && $row_count){
                //用户离线
                $data = [
-                   "type"  => "friendStatus",
+                   "type"  => "status",
                    "uid"   => $pid,
                    "status"=> 'offline'
                ];
-               \GatewayWorker\channel\sendSDK::msgToAdmin(1,$_SESSION[$client_id]['ip_info']['country'],$data);
+               $lan = \GatewayWorker\channel\sendSDK::getlanfromcountry($_SESSION[$client_id]['ip_info']['country']);
+
+               $admin_talk_all = self::$db->select('*')->from('admin_talk')->where("admin_talk_pro='".$lan."'")->orwhere("admin_talk_pro='0'")->query();
+               if(!empty($admin_talk_all)){
+                   foreach ($admin_talk_all as $admin_talk_user){
+                       if(Gateway::isUidOnline($admin_talk_user['admin_primary_id'])){
+                           //用户上线
+                           \GatewayWorker\channel\sendSDK::msgToAdminByPid($admin_talk_user['admin_primary_id'],$data);
+                       }
+                   }
+               }
            }
            unset($row_count);
        }else{

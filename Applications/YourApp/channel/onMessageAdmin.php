@@ -6,6 +6,13 @@ class onMessageAdmin
 {
     private static $config_arr = ['auth'=>'','all' => 'admin_send_all', 'country' => 'admin_send_country', 'cliend' => 'client_send_client'];
     public static $db;
+    private static $lan_arr=[
+        '0'=>'0',
+        '1'=>'CHI',
+        '2'=>'ARB',
+        '6'=>'IND',
+        '7'=>'ENG',
+    ];
 
     /**
      * 客服接收消息与发送消息转接
@@ -60,28 +67,51 @@ class onMessageAdmin
     public static function admin_login($client_id, $data)
     {
         $admin=self::$db->select('*')->from('admin')->where('admin_name="'.$data['admin_name'].'"')->offset(0)->limit(1)->query()[0];
-        if($admin==false||password_verify($data['admin_password'], $admin['password'])==false){
+        if($admin==false || $data['admin_password'] != $admin['password']){
             sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'auth'],-1);
             return;
         }else{
             $_SESSION[$client_id]['auth']=$admin;
-            Gateway::joinGroup($client_id,$data['language']);var_dump($data['language']); //TODO 需要完善
             Gateway::joinGroup($client_id,'admin');
             Gateway::bindUid($client_id,$admin['admin_id']);
             $_SESSION['pid'] = $admin['admin_id'];
-            //判断用户是否存在
+            $language = static::getlanfromcountry($data['language']);
+            if($language != 0){
+                Gateway::joinGroup($client_id,$language);
+            }else{
+                foreach (self::$lan_arr as $value){
+                    Gateway::joinGroup($client_id,$value);
+                }
+            }
 
+            //判断用户是否存在
+            $admin_talk_data = self::$db->select('admin_primary_id')->from('admin_talk')->where('admin_primary_id',$admin['admin_id'])->row();
+            if(!$admin_talk_data){
+                $insert_admin_talk = [
+                    'admin_talk_name'=> $admin['admin_show_name'],
+                    'admin_talk_pro'=> $language,
+                    'admin_talk_img'=> 'http://13.229.73.221/images/admin.gif',
+                    'admin_talk_sign'=> '这个人很懒，什么都没有留下',
+                    'admin_primary_id'=>$admin['admin_id'],
+                    'admin_talk_status'=>1,
+                    'admin_talk_last_time'=>date('Y-m-d H:i:s')
+                ];
+
+                $insert_admin_res = self::$db->insert('admin_talk')->cols($insert_admin_talk)->query();
+                if(!$insert_admin_res){
+                    sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'auth'],-1);
+                    return;
+                }
+            }
 
 
             self::$db->update('admin_talk')->cols(['admin_talk_status'=>1,'admin_talk_last_time'=>date('Y-m-d H:i:s',time())])->where('admin_primary_id='.$admin['admin_id'])->query();
-            //告诉自己，通讯成功
-            sendSDK::msgToAdminByPid($admin['admin_id'],['pid'=>$admin['admin_id'],'type'=>'auth'],1);
 
             //查看是否有未读消息，如果有，直接推送
-            if($data['language'] == '0'){
+            if($language == '0'){
                 $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_type=0')->where('talk_msg_is_read=0')->query();
             }else{
-                $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_type=0')->where("talk_msg_lan='".$data['language']."'")->where('talk_msg_is_read=0')->query();
+                $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_type=0')->where("talk_msg_lan='".$language."'")->where('talk_msg_is_read=0')->query();
             }
 
             if(!empty($talk_msg_infos)){
@@ -91,17 +121,20 @@ class onMessageAdmin
                         sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
                         return;
                     }
-                    $datas = sendSDK::msg_template($talk_user['talk_user_name'],"/images/close.png",$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_msg'],$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_id'],false);
+                    $datas = sendSDK::msg_template($talk_user['talk_user_name'],'http://13.229.73.221/images/admin.gif',$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_msg'],$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_id'],false);
                     $datas['sendUser'] = 'old_user';
                     sendSDK::msgToAdminByPid($admin['admin_id'],$datas);
                 }
                 if($data['language'] == '0'){
                     self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type=0')->where('talk_msg_is_read=0')->query();
                 }else{
-                    self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type=0')->where("talk_msg_lan='".$data['language']."'")->where('talk_msg_is_read=0')->query();
+                    self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type=0')->where("talk_msg_lan='".$language."'")->where('talk_msg_is_read=0')->query();
                 }
             }
         }
+
+        //告诉自己，通讯成功
+        sendSDK::msgToAdminByPid($admin['admin_id'],['pid'=>$admin['admin_id'],'type'=>'auth'],1);
         return;
     }
 
@@ -145,34 +178,6 @@ class onMessageAdmin
             sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
         }
         return;
-//        $client_ids=Gateway::getUidListByGroup('client_'.$country);
-//        if(!empty($client_ids)){
-//            $str = '';
-//            $lan  = sendSDK::getlanfromcountry($msg['country']);
-//            if($lan === false){
-//                sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,country not allow'],-4);
-//            }
-//
-//            获取客服列表
-//            $customers = self::$db->from('admin_talk')->select('*')->where('admin_talk_pro="'.$lan.'"')->orwhere("admin_talk_pro=0")->query();
-//            if(count($customers) <= 0){
-//                sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'This function has not been activated yet.'],-8);
-//                return;
-//            }
-//            foreach ($customers as $customer){
-//                $talk_msg_from_id = $customer['admin_primary_id'];
-//                $talk_msg_is_read = 1;
-//                $talk_msg_time = date('Y-m-d H:i:s');
-//                $talk_msg_msg = $msg['msg'];
-//                foreach($client_ids as $v) {
-//                    $str .= "('$talk_msg_from_id','$v',1,'$talk_msg_time','$talk_msg_msg',$talk_msg_is_read),";
-//                }
-//            }
-//            $str = trim($str,',');
-//            self::$db->query('INSERT INTO `talk_msg` (`talk_msg_from_id`,`talk_msg_to_id`,`talk_msg_type`,`talk_msg_time`,`talk_msg_msg`,`talk_msg_is_read`) VALUE '.$str);
-//        }else{
-//            sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSend','msg'=>'adminReSend fail,client not online'],-4);
-//        }
     }
 
     /**
@@ -232,18 +237,17 @@ class onMessageAdmin
             return;
         }
         $talk_msg_data['talk_msg_lan'] = $talk_user['talk_user_lan'];
-        var_dump(5555);
+
         //3.获取客服列表
         $admin_talks =  self::$db->from('admin_talk')->select('*')->where('admin_talk_pro="0"')->orwhere('admin_talk_pro="'.$talk_user['talk_user_lan'].'"')->query();
-//        sendSDK::resendToAdmin($admin_talk['admin_talk_pro'],$talk_msg_data);
         //好友消息
         $send_data = sendSDK::msg_template($msg['msg']['mine']['username'],$msg['msg']['mine']['avatar'],$msg['msg']['mine']['id'],$msg['msg']['mine']['content'],$msg['msg']['mine']['id'],0,true);
         if(Gateway::isUidOnline($msg['msg']['to']['id'])){  //在线
             foreach ($admin_talks as $talk){
                 $data = sendSDK::msg_template($msg['msg']['mine']['username'],$talk['admin_talk_img'],$talk['admin_primary_id'],$msg['msg']['mine']['content'],$talk['admin_primary_id'],0,true);
                 if(Gateway::isUidOnline($talk['admin_primary_id']) && $talk['admin_primary_id'] != $msg['msg']['mine']['id']){
-                    var_dump($talk['admin_primary_id']);
                     $data['sendUser'] = 'old_user';
+
                     sendSDK::msgToAdminByPid($talk['admin_primary_id'],$data);
                 }
             }
@@ -255,16 +259,23 @@ class onMessageAdmin
             sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSendResponse','msg'=>'success','account'=>$msg['account']],0);
         }else{ //不在线
             //所有客服不在线 消息未读
-//            foreach ($admin_talks as $talk){
-//                $talk_msg_data['talk_msg_from_id'] = $talk['admin_primary_id'];
-//                $talk_msg_data['talk_msg_is_read'] = 0;
-//                self::$db->insert('talk_msg')->cols($talk_msg_data)->query();
-//            }
             $talk_msg_data['talk_msg_is_read'] = 0;
             self::$db->insert('talk_msg')->cols($talk_msg_data)->query();
             sendSDK::msgToAdmin(0,$client_id,['type'=>'adminSendResponse','msg'=>'failed','account'=>$msg['account']],0);
         }
         unset($msg);
         return;
+    }
+
+    /**
+     * 根据国家获取语言
+     * @param $country
+     * @return bool|mixed
+     */
+    public static function getlanfromcountry($country)
+    {
+        $arr=static::$lan_arr;
+        if(!array_key_exists($country, $arr)) return false;
+        return $arr[$country];
     }
 }

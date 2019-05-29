@@ -84,18 +84,46 @@ class onMessageClient {
         $_SESSION['pid'] = $data['pid'];
         $time = date('Y-m-d H:i:s');
         //更新用户线上状态
-        $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1])->where('talk_user_pid="'.$data['pid'].'"')->query();
+        $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id']])->where('talk_user_pid="'.$data['pid'].'"')->query();
 
+        //查看用户聊天记录，反馈未读消息
+        $talk_msgs = self::$db->select('*')->from('talk_msg')->where("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_is_read=0')->query();
+        if(!empty($talk_msgs)){
+            foreach ($talk_msgs as $talk_msg){
+                $admin_talk = self::$db->select('*')->from('admin_talk')->where("admin_primary_id='".$talk_msg['talk_msg_from_id']."'")->row();
+                if(!$admin_talk){
+                    sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
+                    return;
+                }
+                $message_data = sendSDK::msg_template($admin_talk['admin_talk_name'],$admin_talk['admin_talk_img'],$talk_msg['talk_msg_from_id'],$talk_msg['talk_msg_msg'],$talk_msg['talk_msg_from_id'],$talk_msg['talk_msg_id'],false);
+                $message_data['sendUser'] = 'old_user';
+                sendSDK::msgToClientByPid($data['pid'],$message_data);
+                unset($message_data);
+            }
+        }
+        self::$db->update('talk_msg')->where('talk_msg_to_id="'.$data['pid'].'"')->where('talk_msg_is_read=0')->cols(['talk_msg_is_read'=>1])->query();
+        unset($talk_msgs);
         //用户上线
-        $datas = [
-            "type"  => "friendStatus",
+        $online_data = [
+            "type"  => "status",
             "uid"   => $data['pid'],
             "status"=> 'online'
         ];
-        if(Gateway::getUidCountByGroup($ip_info['lan'])>0){
-            //客服好友上线
-            sendSDK::msgToAdmin(1,$ip_info['lan'],$datas);
+        var_dump($ip_info['lan']);
+        $admin_talk_all = self::$db->select('*')->from('admin_talk')->where("admin_talk_pro='".$ip_info['lan']."'")->orwhere("admin_talk_pro='0'")->query();
+        var_dump($admin_talk_all);
+        if(!empty($admin_talk_all)){
+            var_dump(9999);
+            var_dump($admin_talk_all);
+            foreach ($admin_talk_all as $admin_talk_user){
+                if(Gateway::isUidOnline($admin_talk_user['admin_primary_id'])){
+                    var_dump(88888);
+                    //用户上线
+                    sendSDK::msgToAdminByPid($admin_talk_user['admin_primary_id'],$online_data);
+                }
+            }
         }
+
         unset($row_count);
         unset($data);
         return;
@@ -117,7 +145,7 @@ class onMessageClient {
         $talk_user = self::$db->select('*')->from('talk_user')->where("talk_user_pid='".$data['pid']."'")->row();
         $result = [
             'username'=> $talk_user['talk_user_name'],
-            'avatar'=> "/images/close.png",
+            'avatar'=> "http://13.229.73.221/images/user.gif",
             'id'=> $data['pid'],
             'type'=> "friend",
             'content'=> $data['msg'],
@@ -127,7 +155,7 @@ class onMessageClient {
             'timestamp'=> time()*1000,
         ];
 
-        $talk_msg = self::$db->select('talk_msg_from_id')->from('talk_msg')->where("talk_msg_from_id='".$data['pid']."'")->orwhere("talk_msg_to_id='".$data['pid']."'")->row();
+        $talk_msg = self::$db->select('talk_msg_from_id')->from('talk_msg')->where("talk_msg_from_id='".$data['pid']."'")->orwhere("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_is_read=1')->row();
         //判断是否为新用户（没有聊天记录为新用户，有聊天记录为老用户）
         if(!$talk_msg){
             //添加好友
@@ -172,9 +200,6 @@ class onMessageClient {
         foreach ($customers as $customer){
             $pid = $customer['admin_primary_id'];
             $talk_msg_data['talk_msg_to_id'] = $pid;
-//            if($talk_msg_data['talk_msg_is_read'] === 1 && !Gateway::isUidOnline($pid)){
-//                $talk_msg_data['talk_msg_is_read'] = 2;
-//            }
             $result['cid'] = $insert_id;
             if(Gateway::isUidOnline($pid) && $pid != $data['pid']){
                 sendSDK::msgToAdminByPid($pid,$result);

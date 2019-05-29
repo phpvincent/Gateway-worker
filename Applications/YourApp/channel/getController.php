@@ -1,6 +1,7 @@
 <?php
 use \Workerman\Autoloader;
 use \GatewayWorker\Lib\Gateway;
+require_once __DIR__.'/onMessageAdmin.php';
 require_once __DIR__ . '/../../../vendor/autoload.php';
 require_once __DIR__.'/Controller.php';
 class getController extends Controller{
@@ -11,16 +12,40 @@ class getController extends Controller{
            $data=[];
            $admin=$db_http->select('*')->from('admin_talk')->where('admin_primary_id="'.$http_data['admin_id'].'"')->offset(0)->limit(1)->query();
            if($admin==null||count($admin)==0){
-           	return $con->send(json_encode(['code'=>1,'msg'=>'admin data not found'])); 
+               $admin_info = $db_http->select('*')->from('admin')->where('admin_id="'.$http_data['admin_id'].'"')->row();
+               if(!$admin_info){
+                   return $con->send(json_encode(['code'=>1,'msg'=>'admin data not found']));
+               }
+               $language = \GatewayWorker\channel\onMessageAdmin::getlanfromcountry($admin_info['languages']);
+               $insert_admin_talk = [
+                   'admin_talk_name'=> $admin_info['admin_show_name'],
+                   'admin_talk_pro'=> $language,
+                   'admin_talk_img'=> 'http://13.229.73.221/images/admin.gif',
+                   'admin_talk_sign'=> '这个人很懒，什么都没有留下',
+                   'admin_primary_id'=>$admin_info['admin_id'],
+                   'admin_talk_status'=>1,
+                   'admin_talk_last_time'=>date('Y-m-d H:i:s')
+               ];
+
+               $insert_admin_res = $db_http->insert('admin_talk')->cols($insert_admin_talk)->query();
+               if(!$insert_admin_res){
+                   return $con->send(json_encode(['code'=>1,'msg'=>'admin data not found']));
+               }
+               $admin_talk_name = $admin_info['admin_show_name'];
+               $admin_talk_sign = '这个人很懒，什么都没有留下';
+               $admin_talk_img = 'http://13.229.73.221/images/admin.gif';
            }else{
            	$admin=$admin[0];
+            $admin_talk_name = $admin['admin_talk_name'];
+            $admin_talk_sign = $admin['admin_talk_sign'];
+            $admin_talk_img = ($admin['admin_talk_img']==null ? 'http://13.229.73.221/images/admin.gif' : $admin['admin_talk_img']);
            }
            $data['data']['mine']=[
-           	'username'=>$admin['admin_talk_name'],
+           	'username'=>$admin_talk_name,
            	'id'=>$http_data['admin_id'],
            	'status'=>'online',
-           	'sign'=>$admin['admin_talk_sign'],
-           	'avatar'=>($admin['admin_talk_img']==null ? 'http://13.229.73.221/images/admin.gif' : $admin['admin_talk_img'])
+           	'sign'=>$admin_talk_sign,
+           	'avatar'=>$admin_talk_img
            ];
            $group=[];
      
@@ -40,9 +65,9 @@ class getController extends Controller{
                			$user_m=[];
                			$user_m['username']=$val['talk_user_name']==null ? $val['talk_user_pid'] : $val['talk_user_name'];
 	               		$user_m['id']=$val['talk_user_pid'];
-	               		$user_m['avatar']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? '/images/online.gif' : '/images/close.png';
+	               		$user_m['avatar']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? '/images/online.gif' : '/images/online.gif';
 	               		$user_m['sign']='语种:'.$val['talk_user_lan'].'，商品id:'.$val['talk_user_goods'];
-	               		$user_m['status']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? 'online' : null;
+	               		$user_m['status']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? 'online' : 'offline';
 	               		$group_m['list'][]=$user_m;
                			unset($user_m);
                		}
@@ -62,9 +87,9 @@ class getController extends Controller{
                	 			$user_m=[];
                	 		 	$user_m['username']=$v['talk_user_name']==null ? $v['talk_user_pid'] : $v['talk_user_name'];
 		               		$user_m['id']=$v['talk_user_pid'];
-		               		$user_m['avatar']=Gateway::isUidOnline($v['talk_user_pid'])==1 ? '/images/online.gif' : '/images/close.png';
+		               		$user_m['avatar']=Gateway::isUidOnline($v['talk_user_pid'])==1 ? '/images/online.gif' : '/images/online.gif';
 		               		$user_m['sign']='语种:'.$v['talk_user_lan'].'，商品id:'.$v['talk_user_goods'];
-		               		$user_m['status']=Gateway::isUidOnline($v['talk_user_pid'])==1 ? 'online' : null;
+		               		$user_m['status']=Gateway::isUidOnline($v['talk_user_pid'])==1 ? 'online' : 'offline';
 		               		$group_m['list'][]=$user_m;
                	 			unset($user_m);
                	 		}

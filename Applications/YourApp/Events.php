@@ -62,7 +62,7 @@ class Events
         $ip_info=$IpGet->getIpMsg();
         //unset($IpGet);
         $time=date('Y-m-d H:i:s',time());
-        $ip_info['country']=$IpGet->getCountry() != "局域网" ? $IpGet->getCountry() : '台湾省';
+        //$ip_info['country']=$IpGet->getCountry() != "局域网" ? $IpGet->getCountry() : '台湾省';
         if(!array_key_exists($ip_info['country'], GatewayWorker\channel\sendSDK::$lan_arr)){
           GatewayWorker\channel\sendSDK::msgToClient($client_id,['type'=>'connet fail,country not allowed','client_id'=>$client_id,'ip'=>$ip,'country'=>$ip_info['country'],'time'=>$time]);
           Gateway::closeClient($client_id);

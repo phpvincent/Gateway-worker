@@ -67,7 +67,7 @@ class onMessageAdmin
     public static function admin_login($client_id, $data)
     {
         $admin=self::$db->select('*')->from('admin')->where('admin_name="'.$data['admin_name'].'"')->offset(0)->limit(1)->query()[0];
-        if($admin==false || $data['admin_password'] != $admin['password']){
+        if($admin==false || $data['admin_password'] != $admin['password']){var_dump($admin,$data['admin_password'],$admin['password']);
             sendSDK::msgToAdmin(0,$client_id,['err'=>'auth unallow','type'=>'auth'],-1);
             return;
         }else{

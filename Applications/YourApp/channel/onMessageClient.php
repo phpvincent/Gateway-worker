@@ -109,15 +109,10 @@ class onMessageClient {
             "uid"   => $data['pid'],
             "status"=> 'online'
         ];
-        var_dump($ip_info['lan']);
         $admin_talk_all = self::$db->select('*')->from('admin_talk')->where("admin_talk_pro='".$ip_info['lan']."'")->orwhere("admin_talk_pro='0'")->query();
-        var_dump($admin_talk_all);
         if(!empty($admin_talk_all)){
-            var_dump(9999);
-            var_dump($admin_talk_all);
             foreach ($admin_talk_all as $admin_talk_user){
                 if(Gateway::isUidOnline($admin_talk_user['admin_primary_id'])){
-                    var_dump(88888);
                     //用户上线
                     sendSDK::msgToAdminByPid($admin_talk_user['admin_primary_id'],$online_data);
                 }
@@ -156,12 +151,16 @@ class onMessageClient {
         ];
 
         $talk_msg = self::$db->select('talk_msg_from_id')->from('talk_msg')->where("talk_msg_from_id='".$data['pid']."'")->orwhere("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_is_read=1')->row();
+        $add_list = [];
         //判断是否为新用户（没有聊天记录为新用户，有聊天记录为老用户）
         if(!$talk_msg){
             //添加好友
-            $result['sendUser'] = "new_user";
-        }else{
-            $result['sendUser'] = "old_user";
+            $add_list['type'] = 'add';
+            $add_list['avatar'] = '/images/online.gif';
+            $add_list['username'] = $talk_user['talk_user_name'];
+            $add_list['groupid'] = $ip_info['lan'];
+            $add_list['id'] = $data['pid'];
+            $add_list['sign'] = '你好，我想要购买你们的产品，可以问你一些问题吗？';
         }
         $talk_msg_data = [
             'talk_msg_from_id'=>$data['pid'],
@@ -202,6 +201,9 @@ class onMessageClient {
             $talk_msg_data['talk_msg_to_id'] = $pid;
             $result['cid'] = $insert_id;
             if(Gateway::isUidOnline($pid) && $pid != $data['pid']){
+                if(!empty($add_list)){
+                    sendSDK::msgToAdminByPid($pid,$add_list);
+                }
                 sendSDK::msgToAdminByPid($pid,$result);
             }
         }

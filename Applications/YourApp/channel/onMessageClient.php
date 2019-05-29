@@ -96,7 +96,6 @@ class onMessageClient {
                     return;
                 }
                 $message_data = sendSDK::msg_template($admin_talk['admin_talk_name'],$admin_talk['admin_talk_img'],$talk_msg['talk_msg_from_id'],$talk_msg['talk_msg_msg'],$talk_msg['talk_msg_from_id'],$talk_msg['talk_msg_id'],false);
-                $message_data['sendUser'] = 'old_user';
                 sendSDK::msgToClientByPid($data['pid'],$message_data);
                 unset($message_data);
             }
@@ -160,7 +159,7 @@ class onMessageClient {
             $add_list['username'] = $talk_user['talk_user_name'];
             $add_list['groupid'] = $ip_info['lan'];
             $add_list['id'] = $data['pid'];
-            $add_list['sign'] = '你好，我想要购买你们的产品，可以问你一些问题吗？';
+            $add_list['sign'] = "语种：".$ip_info['lan']." 商品id：".$talk_user['talk_user_goods'];
         }
         $talk_msg_data = [
             'talk_msg_from_id'=>$data['pid'],

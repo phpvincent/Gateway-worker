@@ -122,7 +122,6 @@ class onMessageAdmin
                         return;
                     }
                     $datas = sendSDK::msg_template($talk_user['talk_user_name'],'http://13.229.73.221/images/admin.gif',$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_msg'],$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_id'],false);
-                    $datas['sendUser'] = 'old_user';
                     sendSDK::msgToAdminByPid($admin['admin_id'],$datas);
                 }
                 if($data['language'] == '0'){
@@ -246,8 +245,6 @@ class onMessageAdmin
             foreach ($admin_talks as $talk){
                 $data = sendSDK::msg_template($msg['msg']['mine']['username'],$talk['admin_talk_img'],$talk['admin_primary_id'],$msg['msg']['mine']['content'],$talk['admin_primary_id'],0,true);
                 if(Gateway::isUidOnline($talk['admin_primary_id']) && $talk['admin_primary_id'] != $msg['msg']['mine']['id']){
-                    $data['sendUser'] = 'old_user';
-
                     sendSDK::msgToAdminByPid($talk['admin_primary_id'],$data);
                 }
             }

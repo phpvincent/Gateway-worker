@@ -237,7 +237,7 @@ class onMessageAdmin
         $admin_talks =  self::$db->from('admin_talk')->select('*')->where('admin_talk_pro="0"')->orwhere('admin_talk_pro="'.$talk_user['talk_user_lan'].'"')->query();
 //        sendSDK::resendToAdmin($admin_talk['admin_talk_pro'],$talk_msg_data);
         //好友消息
-        $send_data = sendSDK::msg_template($msg['msg']['mine']['username'],$msg['msg']['mine']['avatar'],$msg['msg']['mine']['id'],$msg['msg']['mine']['content'],$msg['msg']['mine']['id'],0,false);
+        $send_data = sendSDK::msg_template($msg['msg']['mine']['username'],$msg['msg']['mine']['avatar'],$msg['msg']['mine']['id'],$msg['msg']['mine']['content'],1,0,false);
         if(Gateway::isUidOnline($msg['msg']['to']['id'])){  //在线
             foreach ($admin_talks as $talk){
                 $data = sendSDK::msg_template($msg['msg']['mine']['username'],$talk['admin_talk_img'],$talk['admin_primary_id'],$msg['msg']['mine']['content'],$talk['admin_primary_id'],0,true);

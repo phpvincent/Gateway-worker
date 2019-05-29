@@ -109,9 +109,9 @@ class onMessageAdmin
 
             //查看是否有未读消息，如果有，直接推送
             if($language == '0'){
-                $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_type=0')->where('talk_msg_is_read=0')->query();
+                $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_type="0"')->where('talk_msg_is_read="0"')->query();
             }else{
-                $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_type=0')->where("talk_msg_lan='".$language."'")->where('talk_msg_is_read=0')->query();
+                $talk_msg_infos = self::$db->select('*')->from('talk_msg')->where('talk_msg_type="0"')->where("talk_msg_lan='".$language."'")->where('talk_msg_is_read="0"')->query();
             }
 
             if(!empty($talk_msg_infos)){
@@ -125,9 +125,9 @@ class onMessageAdmin
                     sendSDK::msgToAdminByPid($admin['admin_id'],$datas);
                 }
                 if($data['language'] == '0'){
-                    self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type=0')->where('talk_msg_is_read=0')->query();
+                    self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type="0"')->where('talk_msg_is_read="0"')->query();
                 }else{
-                    self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type=0')->where("talk_msg_lan='".$language."'")->where('talk_msg_is_read=0')->query();
+                    self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type="0"')->where("talk_msg_lan='".$language."'")->where('talk_msg_is_read="0"')->query();
                 }
             }
         }

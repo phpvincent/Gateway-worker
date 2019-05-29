@@ -8,10 +8,10 @@ return [
 		'database'=>'obj'
 	],*/
 	'database'=>[
-		'route'=>'127.0.0.1',
+		'route'=>'13.229.73.221',
 		'port'=>'3306',
-		'username'=>'root',
-		'password'=>'root',
+		'username'=>'adminuser',
+		'password'=>'adminWD',
 		'database'=>'obj'
 	],
 	'routers'=>[

@@ -87,7 +87,7 @@ class onMessageClient {
         $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id']])->where('talk_user_pid="'.$data['pid'].'"')->query();
 
         //查看用户聊天记录，反馈未读消息
-        $talk_msgs = self::$db->select('*')->from('talk_msg')->where("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_is_read=0')->query();
+        $talk_msgs = self::$db->select('*')->from('talk_msg')->where("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_is_read="0"')->query();
         if(!empty($talk_msgs)){
             foreach ($talk_msgs as $talk_msg){
                 $admin_talk = self::$db->select('*')->from('admin_talk')->where("admin_primary_id='".$talk_msg['talk_msg_from_id']."'")->row();
@@ -100,7 +100,7 @@ class onMessageClient {
                 unset($message_data);
             }
         }
-        self::$db->update('talk_msg')->where('talk_msg_to_id="'.$data['pid'].'"')->where('talk_msg_is_read=0')->cols(['talk_msg_is_read'=>1])->query();
+        self::$db->update('talk_msg')->where('talk_msg_to_id="'.$data['pid'].'"')->where('talk_msg_is_read="0"')->cols(['talk_msg_is_read'=>1])->query();
         unset($talk_msgs);
         //用户上线
         $online_data = [
@@ -172,7 +172,7 @@ class onMessageClient {
         ];
 
         //获取客服列表
-        $customers = self::$db->from('admin_talk')->select('*')->where('admin_talk_pro="'.$ip_info['lan'].'"')->orwhere("admin_talk_pro=0")->query();
+        $customers = self::$db->from('admin_talk')->select('*')->where('admin_talk_pro="'.$ip_info['lan'].'"')->orwhere("admin_talk_pro='0'")->query();
         if(count($customers) <= 0){
             sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'This function has not been activated yet.'],-8);
             return;

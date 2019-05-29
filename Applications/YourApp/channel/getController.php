@@ -65,7 +65,7 @@ class getController extends Controller{
                			$user_m=[];
                			$user_m['username']=$val['talk_user_name']==null ? $val['talk_user_pid'] : $val['talk_user_name'];
 	               		$user_m['id']=$val['talk_user_pid'];
-	               		$user_m['avatar']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? '/images/online.gif' : '/images/online.gif';
+	               		$user_m['avatar']="http://13.229.73.221/images/user.gif";
 	               		$user_m['sign']='语种:'.$val['talk_user_lan'].'，商品id:'.$val['talk_user_goods'];
 	               		$user_m['status']=Gateway::isUidOnline($val['talk_user_pid'])==1 ? 'online' : 'offline';
 	               		$group_m['list'][]=$user_m;
@@ -87,7 +87,7 @@ class getController extends Controller{
                	 			$user_m=[];
                	 		 	$user_m['username']=$v['talk_user_name']==null ? $v['talk_user_pid'] : $v['talk_user_name'];
 		               		$user_m['id']=$v['talk_user_pid'];
-		               		$user_m['avatar']=Gateway::isUidOnline($v['talk_user_pid'])==1 ? '/images/online.gif' : '/images/online.gif';
+		               		$user_m['avatar']="http://13.229.73.221/images/user.gif";
 		               		$user_m['sign']='语种:'.$v['talk_user_lan'].'，商品id:'.$v['talk_user_goods'];
 		               		$user_m['status']=Gateway::isUidOnline($v['talk_user_pid'])==1 ? 'online' : 'offline';
 		               		$group_m['list'][]=$user_m;

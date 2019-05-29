@@ -117,12 +117,16 @@ class onMessageAdmin
             if(!empty($talk_msg_infos)){
                 foreach ($talk_msg_infos as $talk_admin_msg){
                     $talk_user = self::$db->select('*')->from('talk_user')->where("talk_user_pid='".$talk_admin_msg['talk_msg_from_id']."'")->row();
-                    if(!$talk_user){
-                        sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
-                        return;
+                    if($talk_user){
+                        $datas = sendSDK::msg_template($talk_user['talk_user_name'],'http://13.229.73.221/images/admin.gif',$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_msg'],$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_id'],false);
+                        sendSDK::msgToAdminByPid($admin['admin_id'],$datas);
                     }
-                    $datas = sendSDK::msg_template($talk_user['talk_user_name'],'http://13.229.73.221/images/admin.gif',$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_msg'],$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_id'],false);
-                    sendSDK::msgToAdminByPid($admin['admin_id'],$datas);
+//                    if(!$talk_user){
+//                        sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'info err'],-7);
+//                        return;
+//                    }
+//                    $datas = sendSDK::msg_template($talk_user['talk_user_name'],'http://13.229.73.221/images/admin.gif',$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_msg'],$talk_admin_msg['talk_msg_from_id'],$talk_admin_msg['talk_msg_id'],false);
+//                    sendSDK::msgToAdminByPid($admin['admin_id'],$datas);
                 }
                 if($data['language'] == '0'){
                     self::$db->update('talk_msg')->cols(array('talk_msg_is_read'=>'1'))->where('talk_msg_type="0"')->where('talk_msg_is_read="0"')->query();
@@ -241,9 +245,10 @@ class onMessageAdmin
         $admin_talks =  self::$db->from('admin_talk')->select('*')->where('admin_talk_pro="0"')->orwhere('admin_talk_pro="'.$talk_user['talk_user_lan'].'"')->query();
         //好友消息
         $send_data = sendSDK::msg_template($msg['msg']['mine']['username'],$msg['msg']['mine']['avatar'],$msg['msg']['mine']['id'],$msg['msg']['mine']['content'],1,0,false);
+        $msg_username = "<span style='color: #F51322;'>".$msg['msg']['mine']['username']."</span>";
         if(Gateway::isUidOnline($msg['msg']['to']['id'])){  //在线
             foreach ($admin_talks as $talk){
-                $data = sendSDK::msg_template($msg['msg']['mine']['username'],$talk['admin_talk_img'],$talk['admin_primary_id'],$msg['msg']['mine']['content'],$talk['admin_primary_id'],0,true);
+                $data = sendSDK::msg_template($msg_username,$talk['admin_talk_img'],$msg['msg']['to']['id'],$msg['msg']['mine']['content'],$msg['msg']['to']['id'],0,true);
                 if(Gateway::isUidOnline($talk['admin_primary_id']) && $talk['admin_primary_id'] != $msg['msg']['mine']['id']){
                     sendSDK::msgToAdminByPid($talk['admin_primary_id'],$data);
                 }

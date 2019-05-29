@@ -87,7 +87,7 @@ class onMessageClient {
         $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id']])->where('talk_user_pid="'.$data['pid'].'"')->query();
 
         //查看用户聊天记录，反馈未读消息
-        $talk_msgs = self::$db->select('*')->from('talk_msg')->where("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_is_read="0"')->query();
+        $talk_msgs = self::$db->select('*')->from('talk_msg')->where("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_type="1"')->where('talk_msg_is_read="0"')->query();
         if(!empty($talk_msgs)){
             foreach ($talk_msgs as $talk_msg){
                 $admin_talk = self::$db->select('*')->from('admin_talk')->where("admin_primary_id='".$talk_msg['talk_msg_from_id']."'")->row();
@@ -155,7 +155,7 @@ class onMessageClient {
         if(!$talk_msg){
             //添加好友
             $add_list['type'] = 'add';
-            $add_list['avatar'] = '/images/online.gif';
+            $add_list['avatar'] = 'http://13.229.73.221/images/user.gif';
             $add_list['username'] = $talk_user['talk_user_name'];
             $add_list['groupid'] = $ip_info['lan'];
             $add_list['id'] = $data['pid'];

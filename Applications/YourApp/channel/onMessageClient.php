@@ -85,7 +85,7 @@ class onMessageClient {
         $time = date('Y-m-d H:i:s');
         //更新用户线上状态
         if(isset($data['lan'])){
-            $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id'],'talk_msg_lan'=>$data['lan']])->where('talk_user_pid="'.$data['pid'].'"')->query();
+            $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id'],'talk_user_lan'=>$data['lan']])->where('talk_user_pid="'.$data['pid'].'"')->query();
         }else{
             $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id']])->where('talk_user_pid="'.$data['pid'].'"')->query();
         }

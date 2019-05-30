@@ -99,6 +99,10 @@ class Events
                 GateWay::closeClient($client_id);
             }
             $ip_info=$_SESSION[$client_id]['ip_info'];
+            if(isset($msg['lan'])){
+                $ip_info['lan']=$data['lan'];
+                $_SESSION[$client_id]['ip_info']['lan']=$data['lan'];
+            }
             $get_message_res = \GatewayWorker\channel\onMessageClient::get_message($client_id,$msg,$ip_info,self::$db);
             if($get_message_res === false) {
                 \GatewayWorker\channel\sendSDK::msgToClient($client_id, ['type' => 'clientSend', 'err' => 'Method does not exist'], -9);

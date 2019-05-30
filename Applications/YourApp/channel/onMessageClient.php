@@ -34,10 +34,6 @@ class onMessageClient {
     {
         //初次链接，分配pid
         $pid='c'.time().sendSDK::getlanid($client_id).rand(10000,99999);
-        if(isset($data['lan'])){
-            $ip_info['lan']=$data['lan'];
-            $_SESSION[$client_id]['ip_info']['lan']=$data['lan'];
-        }
         Gateway::bindUid($client_id,$pid);
         Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
         $country = sendSDK::getcountryandalias($ip_info['country']);
@@ -80,10 +76,6 @@ class onMessageClient {
             sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
             return;
         }
-        if(isset($data['lan'])){
-            $ip_info['lan']=$data['lan'];
-            $_SESSION[$client_id]['ip_info']['lan']=$data['lan'];
-        }
         Gateway::bindUid($client_id,$data['pid']);
         Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
         $country = sendSDK::getcountryandalias($ip_info['country']);
@@ -92,7 +84,12 @@ class onMessageClient {
         $_SESSION['pid'] = $data['pid'];
         $time = date('Y-m-d H:i:s');
         //更新用户线上状态
-        $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id']])->where('talk_user_pid="'.$data['pid'].'"')->query();
+        if(isset($data['lan'])){
+            $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id'],['talk_msg_lan'=>$data['lan']]])->where('talk_user_pid="'.$data['pid'].'"')->query();
+        }else{
+            $row_count =self::$db->update('talk_user')->cols(['talk_user_last_time'=>$time,"talk_user_status"=>1,'talk_user_goods'=>$data['goods_id']])->where('talk_user_pid="'.$data['pid'].'"')->query();
+
+        }
 
         //查看用户聊天记录，反馈未读消息
         $talk_msgs = self::$db->select('*')->from('talk_msg')->where("talk_msg_to_id='".$data['pid']."'")->where('talk_msg_type="1"')->where('talk_msg_is_read="0"')->query();

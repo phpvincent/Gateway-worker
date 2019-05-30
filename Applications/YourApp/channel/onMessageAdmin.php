@@ -77,10 +77,10 @@ class onMessageAdmin
             $_SESSION['pid'] = $admin['admin_id'];
             $language = static::getlanfromcountry($data['language']);
             if($language != 0){
-                Gateway::joinGroup($client_id,$language);
+                Gateway::joinGroup($client_id,$language);var_dump($language);
             }else{
                 foreach (self::$lan_arr as $value){
-                    Gateway::joinGroup($client_id,$value);
+                    Gateway::joinGroup($client_id,$value);var_dump($value);
                 }
             }
 

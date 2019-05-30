@@ -100,8 +100,8 @@ class Events
             }
             $ip_info=$_SESSION[$client_id]['ip_info'];
             if(isset($msg['lan'])){
-                $ip_info['lan']=$data['lan'];
-                $_SESSION[$client_id]['ip_info']['lan']=$data['lan'];
+                $ip_info['lan']=$msg['lan'];
+                $_SESSION[$client_id]['ip_info']['lan']=$msg['lan'];
             }
             $get_message_res = \GatewayWorker\channel\onMessageClient::get_message($client_id,$msg,$ip_info,self::$db);
             if($get_message_res === false) {

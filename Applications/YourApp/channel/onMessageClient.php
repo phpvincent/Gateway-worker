@@ -34,6 +34,10 @@ class onMessageClient {
     {
         //初次链接，分配pid
         $pid='c'.time().sendSDK::getlanid($client_id).rand(10000,99999);
+        if(isset($data['lan'])){
+            $ip_info['lan']=$data['lan'];
+            $_SESSION[$client_id]['ip_info']['lan']=$data['lan'];
+        }
         Gateway::bindUid($client_id,$pid);
         Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
         $country = sendSDK::getcountryandalias($ip_info['country']);
@@ -75,6 +79,10 @@ class onMessageClient {
         if(!isset($data['pid'])){
             sendSDK::msgToClient($client_id,['type'=>'clientSend','err'=>'pid not found'],-3);
             return;
+        }
+        if(isset($data['lan'])){
+            $ip_info['lan']=$data['lan'];
+            $_SESSION[$client_id]['ip_info']['lan']=$data['lan'];
         }
         Gateway::bindUid($client_id,$data['pid']);
         Gateway::joinGroup($client_id, 'client_'.$ip_info['lan']);
